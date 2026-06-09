@@ -1,0 +1,25 @@
+# Dependency Node (Frontend)
+**/node_modules/
+frontend/.vite/
+
+# Python Virtual Environment (Backend)
+venv/
+ENV/
+env/
+
+# Python Cache
+**/__pycache__/
+*.pyc
+
+# Database Lokal (Sangat penting di-ignore!)
+backend/farmtrack.db
+
+# Environment Variables / Secret Keys
+.env
+frontend/.env
+backend/.env
+
+# IDE / OS Files
+.vscode/
+.DS_Store
+Thumbs.db
