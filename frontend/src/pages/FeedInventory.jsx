@@ -54,7 +54,7 @@ export default function FeedInventory() {
           <h2 className="text-2xl font-bold text-gray-800">Manajemen Stok Pakan</h2>
           <p className="text-gray-500 text-sm mt-1">Pantau ketersediaan dan kelola stok pakan ternak</p>
         </div>
-        {isOwner && <button onClick={openAdd} className="btn-primary">＋ Update Stok</button>}
+        {(isOwner || user?.role === 'staff') && <button onClick={openAdd} className="btn-primary">＋ Update Stok</button>}
       </div>
 
       {/* Alert kritis */}
@@ -118,10 +118,8 @@ export default function FeedInventory() {
                     <td className="py-3 pr-4 text-gray-500">{f.last_restock_date || '—'}</td>
                     <td className="py-3">
                       <div className="flex gap-2">
-                        {isOwner && <>
-                          <button onClick={() => openEdit(f)} className="text-xs text-barn hover:underline">Edit</button>
-                          <button onClick={() => del(f.id)} className="text-xs text-red-400 hover:underline">Hapus</button>
-                        </>}
+                          {(isOwner || user?.role === 'staff') && <button onClick={() => openEdit(f)} className="text-xs text-barn hover:underline">Edit</button>}
+                          {isOwner && <button onClick={() => del(f.id)} className="text-xs text-red-400 hover:underline">Hapus</button>}
                       </div>
                     </td>
                   </tr>

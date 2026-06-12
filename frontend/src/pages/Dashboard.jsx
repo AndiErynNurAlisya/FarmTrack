@@ -3,17 +3,26 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 
+const PRODUCT_LABELS = { susu: 'Susu', telur: 'Telur', wol: 'Wol', daging: 'Daging' }
+const PRODUCT_UNITS = { susu: 'L', telur: 'butir', wol: 'kg', daging: 'kg' }
+
 export default function Dashboard() {
   const { user } = useAuth()
   const [data, setData] = useState(null)
   const [jadwal, setJadwal] = useState([])
+  const [recentHealth, setRecentHealth] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const isVet = user?.role === 'veterinary'
+  const isOwner = user?.role === 'owner'
+
   useEffect(() => {
-    Promise.all([
+    const requests = [
       api.get('/dashboard/summary'),
-      api.get('/health-records')
-    ]).then(([summaryRes, healthRes]) => {
+      api.get('/health-records'),
+    ]
+
+    Promise.all(requests).then(([summaryRes, healthRes]) => {
       setData(summaryRes.data)
 
       const today = new Date()
@@ -31,6 +40,10 @@ export default function Dashboard() {
           }
         })
       setJadwal(upcoming)
+
+      // Recent health records untuk vet
+      const recent = healthRes.data.slice(0, 4)
+      setRecentHealth(recent)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -48,11 +61,12 @@ export default function Dashboard() {
     </div>
   )
 
-  const totalProduksi = Object.values(data?.produksi_hari_ini || {}).reduce((a, b) => a + b, 0)
+  const produksiEntries = Object.entries(data?.produksi_hari_ini || {})
   const sehat = data?.per_status?.sehat || 0
   const observasi = (data?.per_status?.sakit || 0) + (data?.per_status?.observasi || 0)
   const karantina = data?.per_status?.kritis || 0
   const persenSehat = data?.total_animals > 0 ? Math.round((sehat / data.total_animals) * 100) : 0
+  const butuhPerhatian = observasi + karantina
 
   return (
     <div className="space-y-5">
@@ -65,7 +79,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className={`grid gap-4 ${isVet ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {/* Card 1 - Total Hewan */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <div className="flex items-start justify-between mb-4">
@@ -86,66 +100,144 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card 2 - Produksi */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-              <span className="text-xl">📊</span>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Produksi Hari Ini</p>
-          <p className="text-4xl font-bold text-gray-800 mt-1">
-            {totalProduksi.toLocaleString()}
-            <span className="text-xl font-normal text-gray-400 ml-1">L</span>
-          </p>
-          <div className="mt-3">
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div
-                className="bg-barn h-1.5 rounded-full transition-all"
-                style={{ width: `${Math.min((totalProduksi / 6000) * 100, 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-1">Target: 6.000 L</p>
-          </div>
-        </div>
-
-        {/* Card 3 - Stok Pakan */}
-        {data?.stok_kritis?.length > 0 ? (
-          <div className="bg-barn rounded-2xl p-5 text-white shadow-sm">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <span className="text-xl">⚠️</span>
+        {/* Card 2 - Produksi (disembunyikan untuk vet) / Status Kesehatan ringkas (untuk vet) */}
+        {isVet ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+                <span className="text-xl">💚</span>
               </div>
-              <Link to="/stok-pakan"
-                className="text-xs font-semibold border border-white/40 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                Pesan Sekarang
-              </Link>
             </div>
-            <p className="text-white/70 text-xs mt-2">Stok Pakan Menipis</p>
-            <p className="text-xl font-bold mt-0.5">{data.stok_kritis[0]?.feed_name}</p>
-            <p className="text-white/70 text-xs mt-2">
-              Sisa {data.stok_kritis[0]?.current_stock_kg} kg — batas minimum {data.stok_kritis[0]?.min_stock_alert} kg
+            <p className="text-sm text-gray-500">Kondisi Prima</p>
+            <p className="text-4xl font-bold text-gray-800 mt-1">
+              {persenSehat}<span className="text-xl font-normal text-gray-400 ml-0.5">%</span>
             </p>
+            <p className="text-xs text-gray-400 mt-3">{sehat} dari {data?.total_animals ?? 0} hewan sehat</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-              <span className="text-xl">✅</span>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                <span className="text-xl">📊</span>
+              </div>
             </div>
-            <p className="text-sm text-gray-500">Stok Pakan</p>
-            <p className="text-xl font-bold text-green-600 mt-1">Semua Aman</p>
-            <p className="text-xs text-gray-400 mt-1">Stok pakan di atas batas minimum.</p>
+            <p className="text-sm text-gray-500">Produksi Hari Ini</p>
+            {produksiEntries.length > 0 ? (
+              <div className="mt-2 space-y-1.5">
+                {produksiEntries.map(([type, val]) => (
+                  <div key={type} className="flex items-baseline justify-between">
+                    <span className="text-xs text-gray-400 capitalize">{PRODUCT_LABELS[type] || type}</span>
+                    <span className="text-lg font-bold text-gray-800">
+                      {Number(val).toLocaleString()}
+                      <span className="text-xs font-normal text-gray-400 ml-1">{PRODUCT_UNITS[type] || ''}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-4xl font-bold text-gray-800 mt-1">
+                0<span className="text-xl font-normal text-gray-400 ml-1">hari ini</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Card 3 - Hewan Butuh Perhatian (vet) / Stok Pakan (owner/staff) */}
+        {isVet ? (
+          butuhPerhatian > 0 ? (
+            <div className="bg-barn rounded-2xl p-5 text-white shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <span className="text-xl">⚠️</span>
+                </div>
+                <Link to="/ternak"
+                  className="text-xs font-semibold border border-white/40 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                  Periksa
+                </Link>
+              </div>
+              <p className="text-white/70 text-xs mt-2">Butuh Perhatian</p>
+              <p className="text-4xl font-bold mt-0.5">{butuhPerhatian}</p>
+              <p className="text-white/70 text-xs mt-2">
+                {observasi} observasi · {karantina} karantina
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                <span className="text-xl">✅</span>
+              </div>
+              <p className="text-sm text-gray-500">Kondisi Hewan</p>
+              <p className="text-xl font-bold text-green-600 mt-1">Semua Prima</p>
+              <p className="text-xs text-gray-400 mt-1">Tidak ada hewan yang perlu perhatian.</p>
+            </div>
+          )
+        ) : (
+          data?.stok_kritis?.length > 0 ? (
+            <div className="bg-barn rounded-2xl p-5 text-white shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <span className="text-xl">⚠️</span>
+                </div>
+                <Link to="/stok-pakan"
+                  className="text-xs font-semibold border border-white/40 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                  Pesan Sekarang
+                </Link>
+              </div>
+              <p className="text-white/70 text-xs mt-2">Stok Pakan Menipis</p>
+              <p className="text-xl font-bold mt-0.5">{data.stok_kritis[0]?.feed_name}</p>
+              <p className="text-white/70 text-xs mt-2">
+                Sisa {data.stok_kritis[0]?.current_stock_kg} kg — batas minimum {data.stok_kritis[0]?.min_stock_alert} kg
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                <span className="text-xl">✅</span>
+              </div>
+              <p className="text-sm text-gray-500">Stok Pakan</p>
+              <p className="text-xl font-bold text-green-600 mt-1">Semua Aman</p>
+              <p className="text-xs text-gray-400 mt-1">Stok pakan di atas batas minimum.</p>
+            </div>
+          )
+        )}
+
+        {/* Card 4 - Health Record Terakhir (hanya vet) */}
+        {isVet && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                <span className="text-xl">📋</span>
+              </div>
+              <Link to="/health-records" className="text-xs text-barn font-medium hover:underline">
+                Lihat Semua
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500">Catatan Terakhir</p>
+            {recentHealth.length > 0 ? (
+              <>
+                <p className="text-lg font-bold text-gray-800 mt-1 truncate">
+                  {recentHealth[0]?.disease || 'Pemeriksaan Rutin'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{recentHealth[0]?.check_date}</p>
+                <p className="text-xs text-barn font-medium mt-2">{recentHealth.length} catatan bulan ini</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold text-gray-800 mt-1">Belum ada</p>
+                <p className="text-xs text-gray-400 mt-1">Belum ada catatan kesehatan</p>
+              </>
+            )}
           </div>
         )}
       </div>
 
       {/* Jadwal + Status Kesehatan */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Jadwal Terdekat */}
+        {/* Jadwal Vaksinasi */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-700">Jadwal Vaksinasi Terdekat</h3>
-            <Link to="/ternak" className="text-xs text-barn font-medium hover:underline">
+            <Link to="/vaksinasi" className="text-xs text-barn font-medium hover:underline">
               Lihat Semua
             </Link>
           </div>
@@ -191,7 +283,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Alert dinamis — tidak lagi hardcoded */}
           {karantina > 0 ? (
             <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2.5 flex items-center gap-2">
               <span className="text-red-400 flex-shrink-0">⚠</span>
@@ -219,9 +310,12 @@ export default function Dashboard() {
             <button className="text-sm border border-gray-200 px-4 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
               Filter
             </button>
-            <button className="text-sm bg-barn text-white px-4 py-1.5 rounded-lg hover:bg-barn/90 transition-colors font-medium">
-              Unduh Laporan
-            </button>
+            {/* Tombol Unduh Laporan hanya untuk owner/staff */}
+            {!isVet && (
+              <button className="text-sm bg-barn text-white px-4 py-1.5 rounded-lg hover:bg-barn/90 transition-colors font-medium">
+                Unduh Laporan
+              </button>
+            )}
           </div>
         </div>
         <table className="w-full">
@@ -271,11 +365,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* FAB */}
-      <Link to="/ternak"
-        className="fixed bottom-6 right-6 w-12 h-12 bg-barn text-white rounded-full flex items-center justify-center shadow-lg hover:bg-barn/90 transition-colors text-2xl">
-        +
-      </Link>
+      {/* FAB — berbeda tujuan berdasarkan role */}
+      {isVet ? (
+        <Link to="/health-records?new=1"
+          className="fixed bottom-6 right-6 w-12 h-12 bg-barn text-white rounded-full flex items-center justify-center shadow-lg hover:bg-barn/90 transition-colors text-2xl"
+          title="Catat Health Record">
+          🩺
+        </Link>
+      ) : (
+        <Link to="/ternak"
+          className="fixed bottom-6 right-6 w-12 h-12 bg-barn text-white rounded-full flex items-center justify-center shadow-lg hover:bg-barn/90 transition-colors text-2xl">
+          +
+        </Link>
+      )}
     </div>
   )
 }

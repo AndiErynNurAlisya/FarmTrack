@@ -106,3 +106,24 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+# ── Update profil sendiri ─────────────────────────────────────
+@router.put("/me", response_model=schemas.UserOut)
+def update_me(
+    payload: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    data = payload.model_dump(exclude_unset=True)
+
+    if "name" in data and data["name"] is not None:
+        current_user.name = data["name"]
+
+    # Hanya owner yang punya farm_name; member ikut farm owner.
+    if "farm_name" in data and current_user.role == "owner":
+        current_user.farm_name = data["farm_name"]
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user

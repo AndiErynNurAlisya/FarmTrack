@@ -33,7 +33,7 @@ def list_schedules(
 def create_schedule(
     payload: schemas.FeedingScheduleCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner_or_staff),
+    current_user: models.User = Depends(require_owner),
 ):
     owner_id = current_user.id if current_user.role == "owner" else current_user.owner_id
 

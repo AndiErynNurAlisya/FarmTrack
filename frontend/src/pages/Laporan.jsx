@@ -33,10 +33,9 @@ export default function Laporan() {
 
       {loading ? <div className="py-16 flex justify-center"><div className="w-8 h-8 border-4 border-barn border-t-transparent rounded-full animate-spin"/></div> : (
         <>
-          {/* KPI cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* KPI cards — total produksi dipindah sepenuhnya ke halaman Data Produksi */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { label: 'Produksi Susu Total', val: `${data?.total_produksi?.susu?.toFixed(1) || 0} Liter`, icon: '💧', change: '', color: 'text-gray-800' },
               { label: 'Indeks Kesehatan Rata-rata', val: `${data?.indeks_kesehatan || 0}/100`, icon: '❤', change: '', color: 'text-barn' },
               { label: 'Konsumsi Pakan', val: `${data?.total_konsumsi_pakan_kg?.toFixed(0) || 0} Kg`, icon: '🌾', change: 'Stabil', color: 'text-gray-800' },
             ].map(k => (
@@ -78,8 +77,6 @@ export default function Laporan() {
               <div className="space-y-4">
                 {[
                   { label: 'Periode', val: `${data?.range?.dari} s/d ${data?.range?.sampai}` },
-                  { label: 'Total Produksi Susu', val: `${data?.total_produksi?.susu?.toFixed(2) || 0} Liter` },
-                  { label: 'Total Produksi Telur', val: `${data?.total_produksi?.telur?.toFixed(0) || 0} Butir` },
                   { label: 'Indeks Kesehatan', val: `${data?.indeks_kesehatan}%` },
                   { label: 'Total Konsumsi Pakan', val: `${data?.total_konsumsi_pakan_kg?.toFixed(1)} kg` },
                 ].map(r => (

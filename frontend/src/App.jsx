@@ -9,8 +9,10 @@ import AnimalDetail from './pages/AnimalDetail'
 import Productions from './pages/Productions'
 import FeedInventory from './pages/FeedInventory'
 import FeedingSchedules from './pages/FeedingSchedules'
+import HealthRecords from './pages/HealthRecords'
 import Laporan from './pages/Laporan'
 import Pengaturan from './pages/Pengaturan'
+import VaccineSchedule from './pages/VaccineSchedule'
 import Tim from './pages/Tim'
 
 function ProtectedRoute({ children }) {
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="produksi"   element={<Productions />} />
           <Route path="stok-pakan" element={<FeedInventory />} />
           <Route path="jadwal"     element={<FeedingSchedules />} />
+          <Route path="health-records" element={<HealthRecords />} />
+          <Route path="vaksinasi"  element={<VaccineSchedule />} />
           <Route path="laporan"    element={<Laporan />} />
           <Route path="pengaturan" element={<Pengaturan />} />
           <Route path="tim"        element={<OwnerRoute><Tim /></OwnerRoute>} />

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', email: '', password: '', farm_name: '', role: 'owner' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', farm_name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -47,13 +47,9 @@ export default function Register() {
               <label className="label">Nama Peternakan</label>
               <input type="text" placeholder="Contoh: Peternakan Maju Jaya" value={form.farm_name} onChange={set('farm_name')} className="input" />
             </div>
-            <div>
-              <label className="label">Role</label>
-              <select value={form.role} onChange={set('role')} className="input">
-                <option value="owner">Owner</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
+            <p className="text-xs text-gray-400">
+              Akun yang didaftarkan di sini adalah akun <span className="font-semibold text-gray-500">Owner</span> peternakan. Anggota tim (staff &amp; dokter hewan) ditambahkan oleh owner melalui menu Tim.
+            </p>
             <button type="submit" disabled={loading}
               className="w-full py-2.5 rounded-xl font-semibold text-white bg-barn hover:bg-primary-600 transition-colors">
               {loading ? 'Mendaftar...' : 'Daftar Sekarang'}

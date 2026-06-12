@@ -1,13 +1,15 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const navItems = [
-  { path: '/dashboard',  label: 'Dashboard',  icon: '⊞' },
-  { path: '/ternak',     label: 'Data Hewan', icon: '🐄' },
-  { path: '/produksi',   label: 'Production', icon: '📊' },
-  { path: '/stok-pakan', label: 'Feed Stock', icon: '🌾' },
-  { path: '/jadwal',     label: 'Schedules',  icon: '📅' },
-  { path: '/laporan',    label: 'Reports',    icon: '📋' },
+const allNavItems = [
+  { path: '/dashboard',       label: 'Dashboard',      icon: '⊞', roles: ['owner', 'staff', 'veterinary'] },
+  { path: '/ternak',          label: 'Data Hewan',     icon: '🐄', roles: ['owner', 'staff', 'veterinary'] },
+  { path: '/health-records',  label: 'Kesehatan',      icon: '🩺', roles: ['veterinary'] },
+  { path: '/vaksinasi',       label: 'Jadwal Vaksin',  icon: '💉', roles: ['owner', 'staff', 'veterinary'] },
+  { path: '/produksi',        label: 'Produksi',     icon: '📊', roles: ['owner', 'staff'] },
+  { path: '/stok-pakan',      label: 'Stok Pakan',     icon: '🌾', roles: ['owner'] },
+  { path: '/jadwal',          label: 'Jadwal Pakan',      icon: '📅', roles: ['owner'] },
+  { path: '/laporan',         label: 'Laporan',        icon: '📋', roles: ['owner', 'staff'] },
 ]
 
 export default function Layout() {
@@ -15,6 +17,9 @@ export default function Layout() {
   const navigate = useNavigate()
   const handleLogout = () => { logout(); navigate('/login') }
   const isOwner = user?.role === 'owner'
+  const role = user?.role
+
+  const navItems = allNavItems.filter(item => item.roles.includes(role))
 
   return (
     <div className="flex h-screen overflow-hidden bg-cream">

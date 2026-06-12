@@ -7,6 +7,7 @@ const EMPTY = { animal_type: 'sapi', feed_id: '', feeding_time: '06:00', portion
 
 export default function FeedingSchedules() {
   const { user } = useAuth()
+  const isOwner = user?.role === 'owner' 
   const [schedules, setSchedules] = useState([])
   const [feeds, setFeeds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -57,10 +58,12 @@ export default function FeedingSchedules() {
           <h2 className="text-2xl font-bold text-gray-800">Jadwal Pemberian Pakan</h2>
           <p className="text-gray-500 text-sm mt-0.5">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary">🖨 Cetak Laporan</button>
-          <button onClick={openAdd} className="btn-primary">＋ Tambah Jadwal</button>
-        </div>
+          <div className="flex gap-2">
+            <button className="btn-secondary">🖨 Cetak Laporan</button>
+            {isOwner && (
+              <button onClick={openAdd} className="btn-primary">＋ Tambah Jadwal</button>
+            )}
+          </div>
       </div>
 
       {/* Filter */}

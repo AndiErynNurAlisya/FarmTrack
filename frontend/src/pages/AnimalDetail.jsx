@@ -21,15 +21,26 @@ export default function AnimalDetail() {
   const [saving, setSaving] = useState(false)
 
   const fetchAll = async () => {
-    setLoading(true)
-    const [a, h, p] = await Promise.all([
-      api.get(`/animals/${id}`),
+  setLoading(true)
+  try {
+    // Data hewan adalah yang utama.
+    const a = await api.get(`/animals/${id}`)
+    setAnimal(a.data)
+
+    // Kesehatan & produksi bersifat best-effort: sebagian role (mis. veterinary)
+    // tidak punya akses ke produksi, jadi kegagalannya tidak boleh memblokir halaman.
+    const [h, p] = await Promise.allSettled([
       api.get('/health-records', { params: { animal_id: id } }),
       api.get('/productions', { params: { animal_id: id } }),
     ])
-    setAnimal(a.data); setHealth(h.data); setProds(p.data)
+    setHealth(h.status === 'fulfilled' ? h.value.data : [])
+    setProds(p.status === 'fulfilled' ? p.value.data : [])
+  } catch (err) {
+    setAnimal(null)
+  } finally {
     setLoading(false)
   }
+}
 
   useEffect(() => { fetchAll() }, [id])
 

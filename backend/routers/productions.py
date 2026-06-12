@@ -12,6 +12,16 @@ import schemas
 router = APIRouter(prefix="/productions", tags=["Produksi"])
 
 
+# Pemetaan jenis hewan -> jenis produk yang sah beserta satuan standarnya.
+# Sumber kebenaran validasi produksi agar sesuai jenis hewan (selaras dgn frontend).
+ANIMAL_PRODUCTS = {
+    "sapi":    {"susu": "liter", "daging": "kg"},
+    "kambing": {"susu": "liter", "daging": "kg"},
+    "ayam":    {"telur": "butir", "daging": "kg"},
+    "domba":   {"wol": "kg", "daging": "kg"},
+}
+
+
 @router.get("", response_model=List[schemas.ProductionOut])
 def list_productions(
     animal_id:    Optional[int]  = Query(None),
@@ -45,7 +55,16 @@ def create_production(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_owner_or_staff),  # staff bisa catat produksi harian
 ):
-    _verify_animal_access(payload.animal_id, current_user, db)
+    animal = _verify_animal_access(payload.animal_id, current_user, db)
+
+    # Validasi: jenis produk harus sesuai dengan jenis hewan.
+    allowed = ANIMAL_PRODUCTS.get(animal.animal_type, {})
+    if payload.product_type not in allowed:
+        pilihan = ", ".join(allowed.keys()) or "tidak ada"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Jenis produk '{payload.product_type}' tidak sesuai untuk {animal.animal_type}. Pilihan yang valid: {pilihan}.",
+        )
 
     prod = models.Production(**payload.model_dump())
     db.add(prod)
@@ -131,7 +150,7 @@ def _get_or_404(prod_id: int, current_user: models.User, db: Session) -> models.
     return prod
 
 
-def _verify_animal_access(animal_id: int, current_user: models.User, db: Session):
+def _verify_animal_access(animal_id: int, current_user: models.User, db: Session) -> models.Animal:
     user_ids = get_farm_user_ids(current_user, db)
     animal = db.query(models.Animal).filter(
         models.Animal.id == animal_id,
@@ -139,3 +158,4 @@ def _verify_animal_access(animal_id: int, current_user: models.User, db: Session
     ).first()
     if not animal:
         raise HTTPException(status_code=404, detail="Hewan tidak ditemukan")
+    return animal

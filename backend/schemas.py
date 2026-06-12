@@ -29,6 +29,10 @@ class TokenResponse(BaseModel):
 # User
 # ─────────────────────────────────────────────
 
+class UserUpdate(BaseModel):
+    name:      Optional[str] = None
+    farm_name: Optional[str] = None
+
 class UserOut(BaseModel):
     id:        int
     name:      str

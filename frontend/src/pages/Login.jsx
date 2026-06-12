@@ -66,7 +66,6 @@ export default function Login() {
       <div className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white">
-            <p className="text-6xl mb-4">🐄</p>
             <h2 className="font-display text-3xl font-bold mb-2">FarmTrack</h2>
             <p className="text-white/70 text-sm">Manajemen Kandang Ternak Digital</p>
           </div>

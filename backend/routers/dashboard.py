@@ -86,10 +86,10 @@ def laporan_performa(
     - Total konsumsi pakan (dari feeding_schedules × jumlah hari)
     - Tren produksi harian dalam periode
     """
-    user_id = current_user.id
-    today   = date.today()
-    days    = 7 if periode == "mingguan" else 30
-    start   = today - timedelta(days=days - 1)
+    user_ids = get_farm_user_ids(current_user, db)
+    today    = date.today()
+    days     = 7 if periode == "mingguan" else 30
+    start    = today - timedelta(days=days - 1)
 
     # ── total produksi per tipe ───────────────────────────────
     prod_totals = (
@@ -99,7 +99,7 @@ def laporan_performa(
         )
         .join(models.Animal)
         .filter(
-            models.Animal.user_id == user_id,
+            models.Animal.user_id.in_(user_ids),
             models.Production.production_date.between(start, today),
         )
         .group_by(models.Production.product_type)
@@ -108,10 +108,10 @@ def laporan_performa(
     total_produksi = {row.product_type: float(row.total) for row in prod_totals}
 
     # ── indeks kesehatan (% sehat) ────────────────────────────
-    total = db.query(models.Animal).filter(models.Animal.user_id == user_id).count()
+    total = db.query(models.Animal).filter(models.Animal.user_id.in_(user_ids)).count()
     sehat = (
         db.query(models.Animal)
-        .filter(models.Animal.user_id == user_id, models.Animal.status == "sehat")
+        .filter(models.Animal.user_id.in_(user_ids), models.Animal.status == "sehat")
         .count()
     )
     indeks_kesehatan = round((sehat / total * 100), 1) if total else 0
@@ -119,7 +119,10 @@ def laporan_performa(
     # ── konsumsi pakan (jadwal aktif × jumlah hari) ───────────
     jadwal_aktif = (
         db.query(func.sum(models.FeedingSchedule.portion_kg))
-        .filter(models.FeedingSchedule.is_active == True)
+        .filter(
+            models.FeedingSchedule.user_id.in_(user_ids),
+            models.FeedingSchedule.is_active == True,
+        )
         .scalar()
     ) or 0
     total_konsumsi_kg = float(jadwal_aktif) * days
@@ -132,7 +135,7 @@ def laporan_performa(
         )
         .join(models.Animal)
         .filter(
-            models.Animal.user_id == user_id,
+            models.Animal.user_id.in_(user_ids),
             models.Production.production_date.between(start, today),
         )
         .group_by(models.Production.production_date)

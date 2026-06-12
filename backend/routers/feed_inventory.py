@@ -13,17 +13,15 @@ router = APIRouter(prefix="/feed-inventory", tags=["Stok Pakan"])
 @router.get("", response_model=List[schemas.FeedInventoryOut])
 def list_feeds(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner_or_staff),  # veterinary tidak perlu lihat pakan
+    current_user: models.User = Depends(require_owner_or_staff),
 ):
     user_ids = get_farm_user_ids(current_user, db)
-    owner_id = user_ids[0] if current_user.role == "owner" else current_user.owner_id
     return (
         db.query(models.FeedInventory)
-        .filter(models.FeedInventory.user_id == owner_id)
+        .filter(models.FeedInventory.user_id.in_(user_ids))
         .order_by(models.FeedInventory.feed_name)
         .all()
     )
-
 
 @router.get("/low-stock", response_model=List[schemas.FeedInventoryOut])
 def low_stock_feeds(
@@ -31,24 +29,26 @@ def low_stock_feeds(
     current_user: models.User = Depends(require_owner_or_staff),
 ):
     user_ids = get_farm_user_ids(current_user, db)
-    owner_id = current_user.id if current_user.role == "owner" else current_user.owner_id
     return (
         db.query(models.FeedInventory)
         .filter(
-            models.FeedInventory.user_id == owner_id,
+            models.FeedInventory.user_id.in_(user_ids),
             models.FeedInventory.current_stock_kg <= models.FeedInventory.min_stock_alert
         )
         .all()
     )
 
-
 @router.post("", response_model=schemas.FeedInventoryOut, status_code=201)
 def create_feed(
     payload: schemas.FeedInventoryCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),  # hanya owner kelola stok
+    current_user: models.User = Depends(require_owner_or_staff),
 ):
-    feed = models.FeedInventory(**payload.model_dump(), user_id=current_user.id)
+    # Stok pakan dimiliki di tingkat farm (owner), bukan per user.
+    # Staff boleh menambah, tetapi data tetap tercatat milik owner agar
+    # konsisten dengan unique constraint (user_id, feed_name) dan _get_or_404.
+    owner_id = current_user.id if current_user.role == "owner" else current_user.owner_id
+    feed = models.FeedInventory(**payload.model_dump(), user_id=owner_id)
     db.add(feed)
     db.commit()
     db.refresh(feed)
@@ -69,7 +69,7 @@ def update_feed(
     feed_id: int,
     payload: schemas.FeedInventoryUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),
+    current_user: models.User = Depends(require_owner_or_staff),  # ubah ini
 ):
     feed = _get_or_404(feed_id, current_user, db)
 

@@ -4,7 +4,19 @@ import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-const EMPTY = { animal_id: '', production_date: '', product_type: 'susu', quantity: '', unit: 'liter', selling_price: '', notes: '' }
+// Pemetaan jenis hewan -> jenis produk yang sah + satuannya (selaras dengan backend).
+const PRODUCT_CONFIG = {
+  sapi:    [{ value: 'susu', label: 'Susu', unit: 'liter' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
+  kambing: [{ value: 'susu', label: 'Susu', unit: 'liter' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
+  ayam:    [{ value: 'telur', label: 'Telur', unit: 'butir' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
+  domba:   [{ value: 'wol', label: 'Wol', unit: 'kg' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
+}
+const PRODUCT_LABELS = { susu: 'Susu', telur: 'Telur', wol: 'Wol', daging: 'Daging' }
+const PRODUCT_UNITS = { susu: 'liter', telur: 'butir', wol: 'kg', daging: 'kg' }
+const PRODUCT_ICONS = { susu: '💧', telur: '🥚', wol: '🧶', daging: '🥩' }
+const PRODUCT_TYPES = ['susu', 'telur', 'wol', 'daging']
+
+const EMPTY = { animal_id: '', production_date: '', product_type: '', quantity: '', unit: '', selling_price: '', notes: '' }
 
 export default function Productions() {
   const { user } = useAuth()
@@ -34,6 +46,24 @@ export default function Productions() {
 
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
+  // Jenis produk mengikuti jenis hewan yang dipilih.
+  const selectedAnimal = animals.find(a => a.id === parseInt(form.animal_id))
+  const productOptions = selectedAnimal ? (PRODUCT_CONFIG[selectedAnimal.animal_type] || []) : []
+
+  const onAnimalChange = e => {
+    const animal_id = e.target.value
+    const animal = animals.find(a => a.id === parseInt(animal_id))
+    const opts = animal ? (PRODUCT_CONFIG[animal.animal_type] || []) : []
+    const first = opts[0]
+    setForm(p => ({ ...p, animal_id, product_type: first?.value || '', unit: first?.unit || '' }))
+  }
+
+  const onProductChange = e => {
+    const product_type = e.target.value
+    const opt = productOptions.find(o => o.value === product_type)
+    setForm(p => ({ ...p, product_type, unit: opt?.unit || '' }))
+  }
+
   const save = async (e) => {
     e.preventDefault(); setSaving(true)
     try {
@@ -54,14 +84,19 @@ export default function Productions() {
           <h2 className="text-2xl font-bold text-gray-800">Data Produksi</h2>
           <p className="text-gray-500 text-sm mt-1">Catatan hasil produksi harian hewan ternak</p>
         </div>
-        {isOwner && <button onClick={() => setShowModal(true)} className="btn-primary">＋ Input Produksi</button>}
+        {(isOwner || user?.role === 'staff') && <button onClick={() => setShowModal(true)} className="btn-primary">＋ Input Produksi</button>}
       </div>
 
-      {/* Summary cards */}
+      {/* Summary cards — kartu produk mengikuti jenis produksi hari ini */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Susu Hari Ini', val: `${todaySummary.susu || 0} L`, icon: '💧' },
-          { label: 'Telur Hari Ini', val: `${todaySummary.telur || 0} butir`, icon: '🥚' },
+          ...PRODUCT_TYPES
+            .filter(t => todaySummary[t] != null)
+            .map(t => ({
+              label: `${PRODUCT_LABELS[t]} Hari Ini`,
+              val: `${todaySummary[t] || 0} ${PRODUCT_UNITS[t]}`,
+              icon: PRODUCT_ICONS[t],
+            })),
           { label: 'Total Catatan', val: prods.length, icon: '📝' },
           { label: 'Hewan Berproduksi', val: new Set(prods.map(p=>p.animal_id)).size, icon: '🐄' },
         ].map(s => (
@@ -93,9 +128,9 @@ export default function Productions() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700">Catatan Produksi</h3>
           <div className="flex gap-1 bg-gray-50 rounded-lg p-1">
-            {['', 'susu', 'telur'].map(t => (
+            {['', ...PRODUCT_TYPES].map(t => (
               <button key={t} onClick={() => setFilterType(t)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${filterType === t ? 'bg-white shadow-sm text-barn' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-all capitalize ${filterType === t ? 'bg-white shadow-sm text-barn' : 'text-gray-500 hover:text-gray-700'}`}>
                 {t === '' ? 'Semua' : t}
               </button>
             ))}
@@ -140,7 +175,7 @@ export default function Productions() {
           <form onSubmit={save} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><label className="label">Hewan *</label>
-                <select required value={form.animal_id} onChange={set('animal_id')} className="input">
+                <select required value={form.animal_id} onChange={onAnimalChange} className="input">
                   <option value="">Pilih hewan...</option>
                   {animals.map(a => <option key={a.id} value={a.id}>#{a.tag_number} – {a.animal_type}</option>)}
                 </select>
@@ -149,17 +184,16 @@ export default function Productions() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className="label">Jenis Produk *</label>
-                <select value={form.product_type} onChange={set('product_type')} className="input">
-                  <option value="susu">Susu</option><option value="telur">Telur</option>
+                <select required value={form.product_type} onChange={onProductChange} disabled={!form.animal_id} className="input disabled:bg-gray-50 disabled:text-gray-400">
+                  <option value="">{form.animal_id ? 'Pilih produk...' : 'Pilih hewan dulu'}</option>
+                  {productOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div><label className="label">Jumlah *</label><input type="number" step="0.01" required value={form.quantity} onChange={set('quantity')} className="input" placeholder="0.00" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className="label">Satuan</label>
-                <select value={form.unit} onChange={set('unit')} className="input">
-                  <option value="liter">Liter</option><option value="butir">Butir</option><option value="kg">Kg</option>
-                </select>
+                <input value={form.unit} readOnly placeholder="—" title="Satuan mengikuti jenis produk" className="input bg-gray-50 text-gray-500" />
               </div>
               <div><label className="label">Harga/Satuan (Rp)</label><input type="number" value={form.selling_price} onChange={set('selling_price')} className="input" placeholder="0" /></div>
             </div>
