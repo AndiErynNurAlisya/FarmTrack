@@ -54,7 +54,7 @@ export default function FeedInventory() {
           <h2 className="text-2xl font-bold text-gray-800">Manajemen Stok Pakan</h2>
           <p className="text-gray-500 text-sm mt-1">Pantau ketersediaan dan kelola stok pakan ternak</p>
         </div>
-        {(isOwner || user?.role === 'staff') && <button onClick={openAdd} className="btn-primary">＋ Update Stok</button>}
+        {(isOwner || user?.role === 'staff') && <button onClick={openAdd} className="btn-primary">＋ Tambah Jenis Pakan</button>}
       </div>
 
       {/* Alert kritis */}

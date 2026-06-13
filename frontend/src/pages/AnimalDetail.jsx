@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const HEALTH_EMPTY = { check_date: '', disease: '', symptoms: '', treatment: '', medicine_name: '', next_vaccine_date: '' }
+const ANIMAL_EMPTY = { tag_number: '', animal_type: 'sapi', breed: '', gender: 'betina', status: 'sehat', weight_kg: '', birth_date: '', purchase_date: '', notes: '' }
 
 export default function AnimalDetail() {
   const { id } = useParams()
@@ -18,7 +19,11 @@ export default function AnimalDetail() {
   const [loading, setLoading] = useState(true)
   const [showHealth, setShowHealth] = useState(false)
   const [healthForm, setHealthForm] = useState(HEALTH_EMPTY)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState(ANIMAL_EMPTY)
   const [saving, setSaving] = useState(false)
+
+  const isOwner = user?.role === 'owner'
 
   const fetchAll = async () => {
   setLoading(true)
@@ -45,15 +50,64 @@ export default function AnimalDetail() {
   useEffect(() => { fetchAll() }, [id])
 
   const setHF = k => e => setHealthForm(p => ({ ...p, [k]: e.target.value }))
+  const setEF = k => e => setEditForm(p => ({ ...p, [k]: e.target.value }))
 
-  const saveHealth = async (e) => {
+  const openEditProfile = () => {
+    if (!animal) return
+    setEditForm({
+      tag_number: animal.tag_number || '',
+      animal_type: animal.animal_type || 'sapi',
+      breed: animal.breed || '',
+      gender: animal.gender || 'betina',
+      status: animal.status || 'sehat',
+      weight_kg: animal.weight_kg || '',
+      birth_date: animal.birth_date || '',
+      purchase_date: animal.purchase_date || '',
+      notes: animal.notes || '',
+    })
+    setShowEdit(true)
+  }
+
+  const saveAnimal = async (e) => {
     e.preventDefault(); setSaving(true)
     try {
-      await api.post('/health-records', { ...healthForm, animal_id: parseInt(id), handled_by: user.id })
-      setShowHealth(false); setHealthForm(HEALTH_EMPTY); fetchAll()
-    } catch (err) { alert(err.response?.data?.detail || 'Gagal') }
-    finally { setSaving(false) }
+      const payload = { ...editForm, weight_kg: editForm.weight_kg ? parseFloat(editForm.weight_kg) : null }
+      await api.put(`/animals/${id}`, payload)
+      setShowEdit(false); fetchAll()
+    } catch (err) {
+      const d = err.response?.data?.detail
+      const msg = Array.isArray(d)
+        ? d.map(x => x.msg).join(', ')
+        : (typeof d === 'string' ? d : 'Gagal menyimpan data hewan')
+      alert(msg)
+    } finally { setSaving(false) }
   }
+
+  const saveHealth = async (e) => {
+  e.preventDefault(); setSaving(true)
+  try {
+    // Field opsional yang kosong dikirim sebagai null (bukan string kosong),
+    // agar tanggal/teks kosong tidak ditolak validasi backend.
+    const payload = {
+      animal_id: parseInt(id),
+      check_date: healthForm.check_date,
+      disease: healthForm.disease || null,
+      symptoms: healthForm.symptoms || null,
+      treatment: healthForm.treatment || null,
+      medicine_name: healthForm.medicine_name || null,
+      next_vaccine_date: healthForm.next_vaccine_date || null,
+    }
+    await api.post('/health-records', payload)
+    setShowHealth(false); setHealthForm(HEALTH_EMPTY); fetchAll()
+  } catch (err) {
+    const d = err.response?.data?.detail
+    const msg = Array.isArray(d)
+      ? d.map(x => x.msg).join(', ')
+      : (typeof d === 'string' ? d : 'Gagal menyimpan catatan')
+    alert(msg)
+  }
+  finally { setSaving(false) }
+}
 
   const calcAge = (birth) => {
     if (!birth) return '—'
@@ -84,6 +138,15 @@ export default function AnimalDetail() {
 
   const prodHarian = prods.length > 0 ? `${prods[0].quantity} ${prods[0].unit || 'L'}` : '—'
 
+    // --- Statistik produksi dari database ---
+    const prodUnit = prods[0]?.unit || 'L'
+    const prodQtys = prods.map(p => parseFloat(p.quantity)).filter(n => !isNaN(n))
+    const latestQty = prodQtys[0] ?? null
+    const avgQty = prodQtys.length ? prodQtys.reduce((a, b) => a + b, 0) / prodQtys.length : 0
+    // Selisih produksi terbaru vs rata-rata (hanya bermakna bila ada >1 catatan)
+    const yieldDiff = prodQtys.length > 1 && latestQty != null ? latestQty - avgQty : null
+    const totalProduksi = prodQtys.reduce((a, b) => a + b, 0)
+
   return (
     <div className="space-y-5 fade-in">
       {/* Breadcrumb + Title */}
@@ -99,7 +162,7 @@ export default function AnimalDetail() {
           </h2>
           <div className="flex gap-2">
             <button
-              onClick={() => navigate('/ternak')}
+              onClick={openEditProfile}
               className="flex items-center gap-1.5 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
             >
               ✏ Edit Profile
@@ -180,32 +243,44 @@ export default function AnimalDetail() {
         {/* RIGHT — Stats + Health Log */}
         <div className="col-span-2 space-y-4">
           {/* Top stat cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">💧</span>
-                <span className="text-xs text-gray-500">Daily Yield</span>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{prodHarian}</p>
-              <p className="text-xs text-green-600 mt-1">↑ +1.2L vs avg</p>
+        <div className="grid grid-cols-3 gap-3">
+          {/* Daily Yield — dari DB + perbandingan nyata vs rata-rata */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">💧</span>
+              <span className="text-xs text-gray-500">Daily Yield</span>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">⚖</span>
-                <span className="text-xs text-gray-500">Current Weight</span>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{animal.weight_kg ? `${animal.weight_kg} kg` : '—'}</p>
-              <p className="text-xs text-gray-400 mt-1">Stable since Mar</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🍽</span>
-                <span className="text-xs text-gray-500">Feed Intake</span>
-              </div>
-              <p className="text-xl font-bold text-gray-800">18 kg/d</p>
-              <p className="text-xs text-gray-400 mt-1">Mix: Alfalfa/Grain</p>
-            </div>
+            <p className="text-xl font-bold text-gray-800">{prodHarian}</p>
+            {yieldDiff != null ? (
+              <p className={`text-xs mt-1 ${yieldDiff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                {yieldDiff >= 0 ? '↑' : '↓'} {yieldDiff >= 0 ? '+' : ''}{yieldDiff.toFixed(1)} {prodUnit} vs rata-rata
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">Belum ada pembanding</p>
+            )}
           </div>
+
+          {/* Current Weight — dari DB */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">⚖</span>
+              <span className="text-xs text-gray-500">Current Weight</span>
+            </div>
+            <p className="text-xl font-bold text-gray-800">{animal.weight_kg ? `${animal.weight_kg} kg` : '—'}</p>
+          </div>
+
+          {/* Total Produksi — dari DB (pengganti Feed Intake statis) */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">📦</span>
+              <span className="text-xs text-gray-500">Total Produksi</span>
+            </div>
+            <p className="text-xl font-bold text-gray-800">
+              {prodQtys.length ? `${totalProduksi.toFixed(1)} ${prodUnit}` : '—'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">{prods.length} catatan produksi</p>
+          </div>
+        </div>
 
           {/* Health & Activity Log */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -224,7 +299,7 @@ export default function AnimalDetail() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-50">
-                      {['DATE', 'EVENT / ACTIVITY', 'PROVIDER', 'STATUS', 'ACTION'].map(h => (
+                      {['TANGGAL', 'PENYAKIT / PEMERIKSAAN', 'TINDAKAN', 'OBAT', 'VAKSIN BERIKUTNYA'].map(h => (
                         <th key={h} className="text-left text-xs text-gray-400 font-semibold px-5 py-3 tracking-wide">{h}</th>
                       ))}
                     </tr>
@@ -237,14 +312,12 @@ export default function AnimalDetail() {
                           <p className="text-sm font-semibold text-gray-800">{h.disease || 'Pemeriksaan Rutin'}</p>
                           {h.symptoms && <p className="text-xs text-gray-400 mt-0.5">{h.symptoms}</p>}
                         </td>
-                        <td className="px-5 py-3 text-sm text-gray-500">{h.medicine_name || 'Farm Clinic'}</td>
-                        <td className="px-5 py-3">
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColor('Completed')}`}>
-                            Completed
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <button className="text-sm text-barn font-medium hover:underline">Details</button>
+                        <td className="px-5 py-3 text-sm text-gray-500">{h.treatment || '—'}</td>
+                        <td className="px-5 py-3 text-sm text-gray-500">{h.medicine_name || '—'}</td>
+                        <td className="px-5 py-3 text-sm whitespace-nowrap">
+                          {h.next_vaccine_date
+                            ? <span className="text-gray-600">{h.next_vaccine_date}</span>
+                            : <span className="text-gray-300">—</span>}
                         </td>
                       </tr>
                     ))}
@@ -260,7 +333,7 @@ export default function AnimalDetail() {
           {/* Chart + Active Insights */}
           <div className="grid grid-cols-3 gap-4">
             {/* Chart */}
-            <div className="col-span-2 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div className="col-span-3 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-700">Milk Production Trends (30 Days)</h3>
                 <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -284,30 +357,6 @@ export default function AnimalDetail() {
                   Belum ada data produksi
                 </div>
               )}
-            </div>
-
-            {/* Active Insights */}
-            <div className="bg-barn rounded-2xl p-4 text-white shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-yellow-300">💡</span>
-                  <span className="text-sm font-semibold">Active Insights</span>
-                </div>
-                <button className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-xs hover:bg-white/30">+</button>
-              </div>
-              <div className="space-y-2">
-                <div className="bg-white/10 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-white">Insemination Window</p>
-                  <p className="text-xs text-white/70 mt-1">Estimated window starts in 4 days. Monitor for behavioral changes in the paddock.</p>
-                </div>
-                <div className="bg-white/10 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-white">Feed Adjustment</p>
-                  <p className="text-xs text-white/70 mt-1">Yield is exceeding expectation. Consider increasing grain ratio by 0.5kg/day.</p>
-                </div>
-              </div>
-              <button className="w-full mt-3 bg-white text-barn text-xs font-semibold py-2 rounded-xl hover:bg-gray-50 transition-colors">
-                Add Observation Note
-              </button>
             </div>
           </div>
         </div>
@@ -334,6 +383,44 @@ export default function AnimalDetail() {
           </form>
         </Modal>
       )}
-    </div>
-  )
-}
+      {showEdit && (
+        <Modal title="Edit Data Hewan" onClose={() => setShowEdit(false)}>
+          <form onSubmit={saveAnimal} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="label">Nomor Tag *</label><input required value={editForm.tag_number} onChange={setEF('tag_number')} className="input" placeholder="Contoh: BV-001" /></div>
+              <div><label className="label">Jenis Hewan *</label>
+                <select value={editForm.animal_type} onChange={setEF('animal_type')} className="input">
+                  {['sapi','kambing','domba','ayam'].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="label">Ras/Breed</label><input value={editForm.breed} onChange={setEF('breed')} className="input" placeholder="Contoh: Limousin" /></div>
+              <div><label className="label">Jenis Kelamin</label>
+                <select value={editForm.gender} onChange={setEF('gender')} className="input">
+                  <option value="betina">Betina</option>
+                  <option value="jantan">Jantan</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="label">Berat (kg)</label><input type="number" step="0.01" value={editForm.weight_kg} onChange={setEF('weight_kg')} className="input" placeholder="0.00" /></div>
+              <div><label className="label">Status</label>
+                <select value={editForm.status} onChange={setEF('status')} className="input">
+                  {['sehat','sakit','kritis','mati'].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="label">Tanggal Lahir</label><input type="date" value={editForm.birth_date} onChange={setEF('birth_date')} className="input" /></div>
+              <div><label className="label">Tanggal Beli</label><input type="date" value={editForm.purchase_date} onChange={setEF('purchase_date')} className="input" /></div>
+            </div>
+            <div><label className="label">Catatan</label><textarea value={editForm.notes} onChange={setEF('notes')} rows={2} className="input resize-none" placeholder="Catatan tambahan..." /></div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setShowEdit(false)} className="btn-secondary flex-1 justify-center">Batal</button>
+              <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      </div> )}

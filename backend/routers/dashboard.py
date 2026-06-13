@@ -48,11 +48,9 @@ def dashboard_summary(
     produksi_hari_ini = {row.product_type: float(row.total) for row in prod_today}
     
 
-    owner_id = current_user.id if current_user.role == 'owner' else current_user.owner_id
-
     low_stock = db.query(models.FeedInventory).filter(
-        models.FeedInventory.user_id == owner_id,
-        models.FeedInventory.current_stock_kg <= models.FeedInventory.min_stock_alert
+    models.FeedInventory.user_id.in_(user_ids),
+    models.FeedInventory.current_stock_kg <= models.FeedInventory.min_stock_alert
     ).all()
 
     stok_kritis = [{"id": f.id, "feed_name": f.feed_name,
@@ -75,7 +73,6 @@ def dashboard_summary(
 
 @router.get("/laporan")
 def laporan_performa(
-    periode: str = Query("mingguan", description="mingguan / bulanan"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -88,14 +85,19 @@ def laporan_performa(
     """
     user_ids = get_farm_user_ids(current_user, db)
     today    = date.today()
-    days     = 7 if periode == "mingguan" else 30
+    days     = 30
     start    = today - timedelta(days=days - 1)
 
-    # ── total produksi per tipe ───────────────────────────────
-    prod_totals = (
+    # ── produksi & estimasi pendapatan per jenis produk ───────
+    prod_by_type = (
         db.query(
             models.Production.product_type,
-            func.sum(models.Production.quantity).label("total"),
+            func.sum(models.Production.quantity).label("qty"),
+            func.max(models.Production.unit).label("unit"),
+            func.sum(
+                models.Production.quantity
+                * func.coalesce(models.Production.selling_price, 0)
+            ).label("pendapatan"),
         )
         .join(models.Animal)
         .filter(
@@ -105,7 +107,16 @@ def laporan_performa(
         .group_by(models.Production.product_type)
         .all()
     )
-    total_produksi = {row.product_type: float(row.total) for row in prod_totals}
+    produksi_per_jenis = [
+        {
+            "jenis": row.product_type,
+            "qty": float(row.qty or 0),
+            "unit": row.unit or "",
+            "pendapatan": float(row.pendapatan or 0),
+        }
+        for row in prod_by_type
+    ]
+    total_pendapatan = sum(p["pendapatan"] for p in produksi_per_jenis)
 
     # ── indeks kesehatan (% sehat) ────────────────────────────
     total = db.query(models.Animal).filter(models.Animal.user_id.in_(user_ids)).count()
@@ -128,30 +139,35 @@ def laporan_performa(
     total_konsumsi_kg = float(jadwal_aktif) * days
 
     # ── tren produksi harian ──────────────────────────────────
+    # ── tren estimasi pendapatan harian (Rp) ──────────────────
     tren_raw = (
-        db.query(
-            models.Production.production_date,
-            func.sum(models.Production.quantity).label("total"),
+            db.query(
+                models.Production.production_date,
+                func.sum(
+                    models.Production.quantity
+                    * func.coalesce(models.Production.selling_price, 0)
+                ).label("total"),
+            )
+            .join(models.Animal)
+            .filter(
+                models.Animal.user_id.in_(user_ids),
+                models.Production.production_date.between(start, today),
+            )
+            .group_by(models.Production.production_date)
+            .order_by(models.Production.production_date)
+            .all()
         )
-        .join(models.Animal)
-        .filter(
-            models.Animal.user_id.in_(user_ids),
-            models.Production.production_date.between(start, today),
-        )
-        .group_by(models.Production.production_date)
-        .order_by(models.Production.production_date)
-        .all()
-    )
-    tren_produksi = [
-        {"tanggal": str(row.production_date), "total": float(row.total)}
-        for row in tren_raw
-    ]
+    tren_pendapatan = [
+            {"tanggal": str(row.production_date), "total": float(row.total or 0)}
+            for row in tren_raw
+        ]
 
     return {
-        "periode": periode,
+        "periode": "bulanan",
         "range": {"dari": str(start), "sampai": str(today)},
-        "total_produksi": total_produksi,
+        "produksi_per_jenis": produksi_per_jenis,
+        "total_pendapatan": total_pendapatan,
         "indeks_kesehatan": indeks_kesehatan,
         "total_konsumsi_pakan_kg": total_konsumsi_kg,
-        "tren_produksi": tren_produksi,
+        "tren_pendapatan": tren_pendapatan,
     }

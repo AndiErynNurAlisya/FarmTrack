@@ -75,8 +75,22 @@ export default function Productions() {
 
   const del = async (id) => { if (!confirm('Hapus?')) return; await api.delete(`/productions/${id}`); fetchAll() }
 
-  const chartData = [...prods].slice(0,14).reverse().map(p => ({ tanggal: p.production_date.slice(5), qty: parseFloat(p.quantity) }))
-
+  const axisTick = { fontSize: 12 }
+  // --- Tren 7 hari terakhir: total produksi per hari, dipisah per kategori ---
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i))
+    return d.toISOString().slice(0, 10) // YYYY-MM-DD
+  })
+  // { susu: [{tanggal, qty}], telur: [...], wol: [...], daging: [...] } untuk 7 hari
+  const chartByType = PRODUCT_TYPES.reduce((acc, type) => {
+    acc[type] = last7.map(date => {
+      const total = prods
+        .filter(p => p.product_type === type && (p.production_date || '').slice(0, 10) === date)
+        .reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
+      return { tanggal: date.slice(5), qty: Math.round(total * 100) / 100 }
+    })
+    return acc
+  }, {})
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-start justify-between">
@@ -108,18 +122,26 @@ export default function Productions() {
         ))}
       </div>
 
-      {/* Chart */}
-      {chartData.length > 0 && (
-        <div className="card">
-          <h3 className="font-semibold text-gray-700 mb-4">Tren Produksi 14 Hari Terakhir</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData}>
-              <XAxis dataKey="tanggal" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="qty" fill="#8B2635" radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Chart — total produksi per hari per kategori (7 hari terakhir) */}
+      {prods.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {['susu', 'telur', 'daging', 'wol'].map(type => (
+            <div key={type} className="card">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">{PRODUCT_ICONS[type]}</span>
+                <h3 className="font-semibold text-gray-700">Tren {PRODUCT_LABELS[type]} (7 Hari)</h3>
+                <span className="text-xs text-gray-400">({PRODUCT_UNITS[type]})</span>
+              </div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={chartByType[type]}>
+                  <XAxis dataKey="tanggal" tick={axisTick} />
+                  <YAxis tick={axisTick} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="qty" fill="#8B2635" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ))}
         </div>
       )}
 

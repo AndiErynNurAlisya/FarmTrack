@@ -184,7 +184,14 @@ export default function Dashboard() {
                 </Link>
               </div>
               <p className="text-white/70 text-xs mt-2">Stok Pakan Menipis</p>
-              <p className="text-xl font-bold mt-0.5">{data.stok_kritis[0]?.feed_name}</p>
+              <p className="text-xl font-bold mt-0.5">
+                {data.stok_kritis[0]?.feed_name}
+                {data.stok_kritis.length > 1 && (
+                  <span className="ml-2 align-middle px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
+                    +{data.stok_kritis.length - 1} lainnya
+                  </span>
+                )}
+              </p>
               <p className="text-white/70 text-xs mt-2">
                 Sisa {data.stok_kritis[0]?.current_stock_kg} kg — batas minimum {data.stok_kritis[0]?.min_stock_alert} kg
               </p>

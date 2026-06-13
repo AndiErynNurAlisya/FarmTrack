@@ -59,7 +59,7 @@ export default function FeedingSchedules() {
           <p className="text-gray-500 text-sm mt-0.5">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
           <div className="flex gap-2">
-            <button className="btn-secondary">🖨 Cetak Laporan</button>
+            <button className="btn-secondary">🖨 Cetak Jadwal Pemberian Pakan</button>
             {isOwner && (
               <button onClick={openAdd} className="btn-primary">＋ Tambah Jadwal</button>
             )}

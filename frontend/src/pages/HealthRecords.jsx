@@ -1,30 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
-import Modal from '../components/Modal'
-
-const EMPTY = {
-  animal_id: '',
-  check_date: '',
-  disease: '',
-  symptoms: '',
-  treatment: '',
-  medicine_name: '',
-  next_vaccine_date: '',
-}
 
 export default function HealthRecords() {
-  const { user } = useAuth()
-  const isOwner = user?.role === 'owner'
-  const [searchParams, setSearchParams] = useSearchParams()
-
   const [records, setRecords] = useState([])
   const [animals, setAnimals] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState(EMPTY)
-  const [saving, setSaving] = useState(false)
   const [filterAnimal, setFilterAnimal] = useState('')
 
   const fetchAll = async () => {
@@ -47,49 +28,6 @@ export default function HealthRecords() {
 
   useEffect(() => { fetchAll() }, [filterAnimal])
 
-  // Buka modal otomatis bila datang dari tombol "+" dashboard (?new=1)
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setForm(EMPTY)
-      setShowModal(true)
-      searchParams.delete('new')
-      setSearchParams(searchParams, { replace: true })
-    }
-  }, [])
-
-  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
-
-  const openAdd = () => { setForm(EMPTY); setShowModal(true) }
-
-  const save = async (e) => {
-    e.preventDefault(); setSaving(true)
-    try {
-      const payload = {
-        ...form,
-        animal_id: parseInt(form.animal_id),
-        disease: form.disease || null,
-        symptoms: form.symptoms || null,
-        treatment: form.treatment || null,
-        medicine_name: form.medicine_name || null,
-        next_vaccine_date: form.next_vaccine_date || null,
-      }
-      await api.post('/health-records', payload)
-      setShowModal(false); setForm(EMPTY); fetchAll()
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal menyimpan catatan')
-    } finally { setSaving(false) }
-  }
-
-  const del = async (id) => {
-    if (!confirm('Hapus catatan kesehatan ini?')) return
-    try {
-      await api.delete(`/health-records/${id}`)
-      fetchAll()
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal menghapus catatan')
-    }
-  }
-
   const animalLabel = (id) => {
     const a = animals.find(an => an.id === id)
     return a ? `#${a.tag_number} — ${a.animal_type}` : `#${id}`
@@ -105,9 +43,13 @@ export default function HealthRecords() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Catatan Kesehatan</h2>
-          <p className="text-gray-500 text-sm mt-1">Riwayat pemeriksaan, pengobatan, dan jadwal vaksinasi ternak</p>
+          <p className="text-gray-500 text-sm mt-1">Ringkasan riwayat pemeriksaan, pengobatan, dan jadwal vaksinasi ternak</p>
         </div>
-        <button onClick={openAdd} className="btn-primary">＋ Catat Pemeriksaan</button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg px-4 py-3 flex items-start gap-2">
+        <span>ℹ️</span>
+        <span>Pencatatan hasil pemeriksaan kini dilakukan langsung dari halaman masing-masing hewan. Buka <Link to="/ternak" className="font-medium underline">Data Hewan</Link>, pilih hewan, lalu klik <b>Log Health Event</b>.</span>
       </div>
 
       {/* Summary */}
@@ -143,14 +85,14 @@ export default function HealthRecords() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                  {['Tanggal','Hewan','Penyakit','Gejala','Pengobatan','Obat','Vaksin Berikutnya','Aksi'].map(h => (
+                  {['Tanggal','Hewan','Penyakit','Gejala','Pengobatan','Obat','Vaksin Berikutnya'].map(h => (
                     <th key={h} className="text-left pb-3 pr-4 font-semibold">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {records.length === 0 ? (
-                  <tr><td colSpan={8} className="py-10 text-center text-gray-400">Belum ada catatan kesehatan</td></tr>
+                  <tr><td colSpan={7} className="py-10 text-center text-gray-400">Belum ada catatan kesehatan</td></tr>
                 ) : records.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">{r.check_date}</td>
@@ -162,9 +104,6 @@ export default function HealthRecords() {
                     <td className="py-3 pr-4 text-gray-500 max-w-xs truncate">{r.treatment || '—'}</td>
                     <td className="py-3 pr-4 text-gray-500">{r.medicine_name || '—'}</td>
                     <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">{r.next_vaccine_date || '—'}</td>
-                    <td className="py-3">
-                      {isOwner && <button onClick={() => del(r.id)} className="text-red-400 hover:text-red-600 text-xs">Hapus</button>}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -172,33 +111,6 @@ export default function HealthRecords() {
           </div>
         )}
       </div>
-
-      {showModal && (
-        <Modal title="Catat Pemeriksaan Kesehatan" onClose={() => setShowModal(false)}>
-          <form onSubmit={save} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Hewan *</label>
-                <select required value={form.animal_id} onChange={set('animal_id')} className="input">
-                  <option value="">Pilih hewan...</option>
-                  {animals.map(a => <option key={a.id} value={a.id}>#{a.tag_number} – {a.animal_type}</option>)}
-                </select>
-              </div>
-              <div><label className="label">Tanggal Periksa *</label><input type="date" required value={form.check_date} onChange={set('check_date')} className="input" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Nama Penyakit</label><input value={form.disease} onChange={set('disease')} className="input" placeholder="Contoh: Mastitis" /></div>
-              <div><label className="label">Nama Obat</label><input value={form.medicine_name} onChange={set('medicine_name')} className="input" placeholder="Nama obat..." /></div>
-            </div>
-            <div><label className="label">Gejala</label><textarea value={form.symptoms} onChange={set('symptoms')} rows={2} className="input resize-none" placeholder="Gejala yang diamati..." /></div>
-            <div><label className="label">Tindakan Pengobatan</label><textarea value={form.treatment} onChange={set('treatment')} rows={2} className="input resize-none" placeholder="Tindakan yang diberikan..." /></div>
-            <div><label className="label">Jadwal Vaksin Berikutnya</label><input type="date" value={form.next_vaccine_date} onChange={set('next_vaccine_date')} className="input" /></div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1 justify-center">Batal</button>
-              <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Menyimpan...' : 'Simpan Catatan'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   )
 }
