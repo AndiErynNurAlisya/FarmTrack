@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-
-// Pemetaan jenis hewan -> jenis produk yang sah + satuannya (selaras dengan backend).
-const PRODUCT_CONFIG = {
-  sapi:    [{ value: 'susu', label: 'Susu', unit: 'liter' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
-  kambing: [{ value: 'susu', label: 'Susu', unit: 'liter' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
-  ayam:    [{ value: 'telur', label: 'Telur', unit: 'butir' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
-  domba:   [{ value: 'wol', label: 'Wol', unit: 'kg' }, { value: 'daging', label: 'Daging', unit: 'kg' }],
-}
-const PRODUCT_LABELS = { susu: 'Susu', telur: 'Telur', wol: 'Wol', daging: 'Daging' }
-const PRODUCT_UNITS = { susu: 'liter', telur: 'butir', wol: 'kg', daging: 'kg' }
-const PRODUCT_ICONS = { susu: '💧', telur: '🥚', wol: '🧶', daging: '🥩' }
-const PRODUCT_TYPES = ['susu', 'telur', 'wol', 'daging']
+import { PRODUCT_CONFIG, PRODUCT_LABELS, PRODUCT_UNITS, PRODUCT_ICONS, PRODUCT_TYPES } from '../constants/products'
 
 const EMPTY = { animal_id: '', production_date: '', product_type: '', quantity: '', unit: '', selling_price: '', notes: '' }
 
@@ -29,6 +19,9 @@ export default function Productions() {
   const [saving, setSaving] = useState(false)
   const [filterType, setFilterType] = useState('')
   const [todaySummary, setTodaySummary] = useState({})
+  const [page, setPage] = useState(1)
+  const [chartDays, setChartDays] = useState(7)   // 7 = seminggu, 30 = sebulan
+  const PER_PAGE = 10
 
   const fetchAll = async () => {
     setLoading(true)
@@ -42,7 +35,11 @@ export default function Productions() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchAll() }, [filterType])
+  useEffect(() => { setPage(1); fetchAll() }, [filterType])
+
+  const totalPages = Math.max(1, Math.ceil(prods.length / PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = prods.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
@@ -69,21 +66,20 @@ export default function Productions() {
     try {
       await api.post('/productions', { ...form, animal_id: parseInt(form.animal_id), quantity: parseFloat(form.quantity), selling_price: form.selling_price ? parseFloat(form.selling_price) : null })
       setShowModal(false); setForm(EMPTY); fetchAll()
-    } catch (err) { alert(err.response?.data?.detail || 'Gagal') }
+    } catch (err) { alert(getErrorMessage(err, 'Gagal menyimpan')) }
     finally { setSaving(false) }
   }
 
   const del = async (id) => { if (!confirm('Hapus?')) return; await api.delete(`/productions/${id}`); fetchAll() }
 
   const axisTick = { fontSize: 12 }
-  // --- Tren 7 hari terakhir: total produksi per hari, dipisah per kategori ---
-  const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i))
+// --- Tren produksi per hari (7 atau 30 hari terakhir, sesuai toggle) ---
+  const chartDates = Array.from({ length: chartDays }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (chartDays - 1 - i))
     return d.toISOString().slice(0, 10) // YYYY-MM-DD
   })
-  // { susu: [{tanggal, qty}], telur: [...], wol: [...], daging: [...] } untuk 7 hari
   const chartByType = PRODUCT_TYPES.reduce((acc, type) => {
-    acc[type] = last7.map(date => {
+    acc[type] = chartDates.map(date => {
       const total = prods
         .filter(p => p.product_type === type && (p.production_date || '').slice(0, 10) === date)
         .reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0)
@@ -122,19 +118,33 @@ export default function Productions() {
         ))}
       </div>
 
-      {/* Chart — total produksi per hari per kategori (7 hari terakhir) */}
-      {prods.length > 0 && (
+    {/* Chart — total produksi per hari per kategori */}
+    {prods.length > 0 && (
+      <div className="space-y-4">
+        {/* Toggle periode */}
+        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 w-fit">
+          {[{ d: 7, label: 'Seminggu' }, { d: 30, label: 'Sebulan' }].map(opt => (
+            <button
+              key={opt.d}
+              onClick={() => setChartDays(opt.d)}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${chartDays === opt.d ? 'bg-white shadow-sm font-medium text-barn' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {['susu', 'telur', 'daging', 'wol'].map(type => (
             <div key={type} className="card">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">{PRODUCT_ICONS[type]}</span>
-                <h3 className="font-semibold text-gray-700">Tren {PRODUCT_LABELS[type]} (7 Hari)</h3>
+                <h3 className="font-semibold text-gray-700">Tren {PRODUCT_LABELS[type]} ({chartDays} Hari)</h3>
                 <span className="text-xs text-gray-400">({PRODUCT_UNITS[type]})</span>
               </div>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartByType[type]}>
-                  <XAxis dataKey="tanggal" tick={axisTick} />
+                  <XAxis dataKey="tanggal" tick={axisTick} interval={chartDays === 30 ? 4 : 0} />
                   <YAxis tick={axisTick} allowDecimals={false} />
                   <Tooltip />
                   <Bar dataKey="qty" fill="#8B2635" radius={[4, 4, 0, 0]} />
@@ -143,7 +153,8 @@ export default function Productions() {
             </div>
           ))}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Filters + Table */}
       <div className="card">
@@ -171,7 +182,7 @@ export default function Productions() {
               <tbody className="divide-y divide-gray-50">
                 {prods.length === 0 ? (
                   <tr><td colSpan={8} className="py-8 text-center text-gray-400">Belum ada data produksi</td></tr>
-                ) : prods.map(p => {
+                ) : pageItems.map(p => {
                   const a = animals.find(an => an.id === p.animal_id)
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
@@ -188,6 +199,20 @@ export default function Productions() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && prods.length > 0 && (
+          <div className="flex items-center justify-between mt-4 text-sm">
+            <span className="text-gray-500">
+              Menampilkan {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, prods.length)} dari {prods.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">‹</button>
+              <span className="text-gray-600 font-medium">Hal. {currentPage} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">›</button>
+            </div>
           </div>
         )}
       </div>

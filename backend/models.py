@@ -28,13 +28,13 @@ class User(Base):
     staff_members  = relationship(
         "User",
         foreign_keys="User.owner_id",
-        back_populates="owner_user"   # ✅ ganti backref → back_populates
+        back_populates="owner_user"   
     )
     owner_user = relationship(
         "User",
         foreign_keys=[owner_id],
         back_populates="staff_members",
-        remote_side="User.id"         # ✅ wajib untuk self-referential
+        remote_side="User.id"         
     )
 
     feed_inventories  = relationship("FeedInventory", back_populates="owner", foreign_keys="FeedInventory.user_id")
@@ -44,20 +44,19 @@ class Animal(Base):
     __tablename__ = "animals"
 
     id            = Column(Integer, primary_key=True, index=True)
-    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)  # selalu merujuk ke owner
-    tag_number    = Column(String(50), nullable=False, index=True)            # TIDAK unique global
-    animal_type   = Column(String(10), nullable=False)   # sapi / kambing / ayam / domba
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)  
+    tag_number    = Column(String(50), nullable=False, index=True)            
+    animal_type   = Column(String(10), nullable=False)   
     breed         = Column(String(100))
     birth_date    = Column(Date)
     weight_kg     = Column(Numeric(10, 2))
-    gender        = Column(String(10))                   # jantan / betina
-    status        = Column(String(10), nullable=False, default="sehat")  # sehat / sakit / mati
+    gender        = Column(String(10))                   
+    status        = Column(String(10), nullable=False, default="sehat")  
     purchase_date = Column(Date)
     notes         = Column(Text)
     created_at    = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        # tag_number unik hanya dalam satu peternakan (per owner)
         UniqueConstraint('user_id', 'tag_number', name='uq_animal_tag_per_owner'),
     )
 
@@ -92,9 +91,9 @@ class Production(Base):
     id              = Column(Integer, primary_key=True, index=True)
     animal_id       = Column(Integer, ForeignKey("animals.id"), nullable=False)
     production_date = Column(Date, nullable=False)
-    product_type    = Column(String(10), nullable=False)  # susu / telur
+    product_type    = Column(String(10), nullable=False)  
     quantity        = Column(Numeric(10, 2), nullable=False)
-    unit            = Column(String(20))                  # liter / butir
+    unit            = Column(String(20))                  
     selling_price   = Column(Numeric(10, 2))
     notes           = Column(Text)
     created_at      = Column(DateTime, server_default=func.now())
@@ -117,7 +116,6 @@ class FeedInventory(Base):
     created_at        = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        # nama pakan unik per owner
         UniqueConstraint('user_id', 'feed_name', name='uq_feed_name_per_owner'),
     )
 
@@ -130,8 +128,8 @@ class FeedingSchedule(Base):
     __tablename__ = "feeding_schedules"
 
     id           = Column(Integer, primary_key=True, index=True)
-    user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)  # FIX: tambah user_id
-    animal_type  = Column(String(10), nullable=False)   # sapi / kambing / ayam / domba
+    user_id      = Column(Integer, ForeignKey("users.id"), nullable=False)  
+    animal_type  = Column(String(10), nullable=False)   
     feed_id      = Column(Integer, ForeignKey("feed_inventory.id"), nullable=False)
     feeding_time = Column(Time, nullable=False)
     portion_kg   = Column(Numeric(10, 2), nullable=False)

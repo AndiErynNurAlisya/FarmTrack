@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 
@@ -40,7 +41,7 @@ export default function FeedingSchedules() {
       if (editId) await api.put(`/feeding-schedules/${editId}`, payload)
       else await api.post('/feeding-schedules', payload)
       setShowModal(false); fetchAll()
-    } catch (err) { alert(err.response?.data?.detail || 'Gagal') }
+    } catch (err) { alert(getErrorMessage(err, 'Gagal menyimpan')) }
     finally { setSaving(false) }
   }
 
@@ -51,6 +52,40 @@ export default function FeedingSchedules() {
     const key = s.feeding_time; if (!acc[key]) acc[key] = []; acc[key].push(s); return acc
   }, {})
 
+  const handlePrint = () => {
+    const safe = (v) => String(v ?? '').replace(/</g, '&lt;')
+    const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    const groups = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
+    const body = groups.map(([time, items]) => {
+      const rows = items.map(s => {
+        const feed = feeds.find(f => f.id === s.feed_id)
+        return `<tr>` +
+          `<td style="text-transform:capitalize">Pakan ${safe(s.animal_type)}</td>` +
+          `<td>${safe(feed ? feed.feed_name : '-')}</td>` +
+          `<td>${safe(s.portion_kg)} kg</td>` +
+          `<td>${s.is_active ? 'Aktif' : 'Nonaktif'}</td>` +
+          `<td>${safe(s.notes || '-')}</td>` +
+          `</tr>`
+      }).join('')
+      return `<tr><td class="hd" colspan="5">${safe(time)} WIB</td></tr>${rows}`
+    }).join('')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Jadwal Pemberian Pakan</title>` +
+      `<style>body{font-family:Arial,Helvetica,sans-serif;color:#333;padding:24px}` +
+      `h1{font-size:18px;margin:0 0 4px}p.sub{color:#666;font-size:12px;margin:0 0 16px}` +
+      `table{border-collapse:collapse;width:100%;font-size:12px}` +
+      `th{background:#f3f3f3;text-align:left;padding:6px 8px;border:1px solid #ddd}` +
+      `td{border:1px solid #ddd;padding:6px 8px}` +
+      `td.hd{background:#8B2635;color:#fff;font-weight:bold;border-color:#8B2635}</style></head>` +
+      `<body><h1>🐄 Jadwal Pemberian Pakan</h1><p class="sub">${safe(today)}</p>` +
+      `<table><thead><tr><th>Jadwal</th><th>Pakan</th><th>Porsi</th><th>Status</th><th>Catatan</th></tr></thead>` +
+      `<tbody>${body}</tbody></table>` +
+      `<script>window.onload=function(){window.print()}<\/script></body></html>`
+    const w = window.open('', '_blank')
+    if (!w) { alert('Mohon izinkan pop-up agar cetak bisa berjalan.'); return }
+    w.document.write(html)
+    w.document.close()
+  }
+
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-start justify-between">
@@ -59,9 +94,11 @@ export default function FeedingSchedules() {
           <p className="text-gray-500 text-sm mt-0.5">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
           <div className="flex gap-2">
-            <button className="btn-secondary">🖨 Cetak Jadwal Pemberian Pakan</button>
+            {['owner', 'staff'].includes(user?.role) && (
+              <button onClick={handlePrint} className="btn-secondary">🖨 Cetak Jadwal Pemberian Pakan</button>
+            )}
             {isOwner && (
-              <button onClick={openAdd} className="btn-primary">＋ Tambah Jadwal</button>
+            <button onClick={openAdd} className="btn-primary">＋ Tambah Jadwal</button>
             )}
           </div>
       </div>
@@ -103,14 +140,16 @@ export default function FeedingSchedules() {
                         </div>
                         <p className="text-sm text-gray-500">{s.portion_kg} kg {feed ? `• ${feed.feed_name}` : ''} {s.notes && `• ${s.notes}`}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => toggle(s)}
-                          className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${s.is_active ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
-                          {s.is_active ? 'Nonaktifkan' : 'Aktifkan'}
-                        </button>
-                        <button onClick={() => openEdit(s)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100">Edit</button>
-                        <button onClick={() => del(s.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100">Hapus</button>
-                      </div>
+                      {isOwner && (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => toggle(s)}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${s.is_active ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
+                            {s.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                          </button>
+                          <button onClick={() => openEdit(s)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100">Edit</button>
+                          <button onClick={() => del(s.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100">Hapus</button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

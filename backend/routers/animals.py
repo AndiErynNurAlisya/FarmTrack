@@ -37,7 +37,6 @@ def create_animal(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_owner),
 ):
-    # ✅ cek duplikat tag hanya dalam farm owner ini
     existing = db.query(models.Animal).filter(
         models.Animal.user_id == current_user.id,
         models.Animal.tag_number == payload.tag_number
@@ -70,7 +69,6 @@ def update_animal(
 ):
     animal = _get_or_404(animal_id, current_user, db)
 
-    # ✅ jika tag_number diubah, cek duplikat dalam farm yang sama
     new_tag = payload.model_dump(exclude_unset=True).get("tag_number")
     if new_tag and new_tag != animal.tag_number:
         conflict = db.query(models.Animal).filter(

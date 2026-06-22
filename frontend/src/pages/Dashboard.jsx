@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
-
-const PRODUCT_LABELS = { susu: 'Susu', telur: 'Telur', wol: 'Wol', daging: 'Daging' }
-const PRODUCT_UNITS = { susu: 'L', telur: 'butir', wol: 'kg', daging: 'kg' }
+import { PRODUCT_LABELS, PRODUCT_UNITS } from '../constants/products'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -313,17 +311,6 @@ export default function Dashboard() {
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700">Aktivitas Ternak Terakhir</h3>
-          <div className="flex gap-2">
-            <button className="text-sm border border-gray-200 px-4 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
-              Filter
-            </button>
-            {/* Tombol Unduh Laporan hanya untuk owner/staff */}
-            {!isVet && (
-              <button className="text-sm bg-barn text-white px-4 py-1.5 rounded-lg hover:bg-barn/90 transition-colors font-medium">
-                Unduh Laporan
-              </button>
-            )}
-          </div>
         </div>
         <table className="w-full">
           <thead>

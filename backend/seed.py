@@ -18,6 +18,10 @@ from datetime import date, time, timedelta
 from database import SessionLocal, engine
 import models
 from auth import hash_password
+import random
+
+rng = random.Random(2026)  # deterministik: hasil sama tiap kali dijalankan
+DAYS = 30
 
 # pastikan tabel ada
 models.Base.metadata.create_all(bind=engine)
@@ -34,6 +38,9 @@ DEMO_EMAILS = [
     "demo@farmtrack.test", "staff@farmtrack.test", "dokter@farmtrack.test",
 ]
 
+def _trend(d):
+    # tren naik tipis menuju hari ini (0.92 .. 1.08)
+    return 0.92 + (DAYS - 1 - d) / (DAYS - 1) * 0.16
 
 def purge_demo(db):
     """Hapus semua user demo (apapun domainnya) beserta seluruh datanya."""
@@ -160,8 +167,8 @@ def main():
             "KMB-002":  (1.5, 2.5, 15000),
         }
         for tag, (lo, hi, price) in susu_producers.items():
-            for d in range(7):
-                qty = round(lo + (hi - lo) * ((d % 3) / 2.0), 2)
+            for d in range(DAYS):
+                qty = round(rng.uniform(lo, hi) * _trend(d), 2)
                 db.add(models.Production(
                     animal_id=animals[tag].id,
                     production_date=TODAY - timedelta(days=d),
@@ -171,27 +178,28 @@ def main():
                     selling_price=price,
                     notes="Pemerahan harian",
                 ))
-        # telur (ayam petelur)
-        for d in range(7):
+        for d in range(DAYS):
             db.add(models.Production(
                 animal_id=animals["AYM-001"].id,
                 production_date=TODAY - timedelta(days=d),
                 product_type="telur",
-                quantity=float(25 + (d % 5)),
+                quantity=round(rng.uniform(22, 28) * _trend(d)),
                 unit="butir",
                 selling_price=2500,
                 notes="Panen telur harian",
             ))
-        # wol (domba betina) - panen berkala, 1 catatan
-        db.add(models.Production(
-            animal_id=animals["DMB-001"].id,
-            production_date=TODAY - timedelta(days=2),
-            product_type="wol",
-            quantity=3.5,
-            unit="kg",
-            selling_price=50000,
-            notes="Cukur wol berkala",
-        ))
+
+        # wol: cukur berkala (domba betina) ~sekali seminggu
+        for d in range(3, DAYS, 7):
+            db.add(models.Production(
+                animal_id=animals["DMB-001"].id,
+                production_date=TODAY - timedelta(days=d),
+                product_type="wol",
+                quantity=round(rng.uniform(3.0, 4.5), 2),
+                unit="kg",
+                selling_price=50000,
+                notes="Cukur wol berkala",
+            ))
 
         # 6) Stok pakan (satu di bawah ambang untuk menguji peringatan stok)
         feeds_def = [

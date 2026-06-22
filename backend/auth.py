@@ -1,6 +1,8 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -10,8 +12,10 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 
+load_dotenv()
+
 # ── Config ────────────────────────────────────────────────────
-SECRET_KEY  = "farmtrack-secret-key-change-in-production"
+SECRET_KEY = os.environ["FARMTRACK_SECRET_KEY"]  # wajib ada, error jika tidak diset
 ALGORITHM   = "HS256"
 EXPIRE_MINS = 60 * 24  # 1 day
 

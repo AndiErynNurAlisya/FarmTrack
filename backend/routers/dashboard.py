@@ -76,17 +76,9 @@ def laporan_performa(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """
-    Data untuk halaman Laporan Performa:
-    - Total produksi susu & telur dalam periode
-    - Indeks kesehatan rata-rata (% hewan sehat)
-    - Total konsumsi pakan (dari feeding_schedules × jumlah hari)
-    - Tren produksi harian dalam periode
-    """
     user_ids = get_farm_user_ids(current_user, db)
     today    = date.today()
-    days     = 30
-    start    = today - timedelta(days=days - 1)
+    start    = today.replace(day=1)         
 
     # ── produksi & estimasi pendapatan per jenis produk ───────
     prod_by_type = (
@@ -136,9 +128,8 @@ def laporan_performa(
         )
         .scalar()
     ) or 0
-    total_konsumsi_kg = float(jadwal_aktif) * days
+    total_konsumsi_kg = float(jadwal_aktif) * 30
 
-    # ── tren produksi harian ──────────────────────────────────
     # ── tren estimasi pendapatan harian (Rp) ──────────────────
     tren_raw = (
             db.query(

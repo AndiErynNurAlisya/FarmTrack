@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 
 export default function HealthRecords() {
   const [records, setRecords] = useState([])
@@ -20,7 +21,7 @@ export default function HealthRecords() {
       setRecords(r.data)
       setAnimals(a.data)
     } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal memuat data kesehatan')
+    alert(getErrorMessage(err, 'Gagal memuat data kesehatan'))
     } finally {
       setLoading(false)
     }

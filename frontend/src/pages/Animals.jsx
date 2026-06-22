@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import { useAuth } from '../context/AuthContext'
-import Modal from '../components/Modal'
+import AnimalFormModal from '../components/AnimalFormModal'
 import StatusBadge from '../components/StatusBadge'
 
 const TYPES = ['Semua', 'sapi', 'kambing', 'domba', 'ayam']
-const EMPTY_FORM = { tag_number: '', animal_type: 'sapi', breed: '', gender: 'betina', status: 'sehat', weight_kg: '', birth_date: '', purchase_date: '', notes: '' }
+//const EMPTY_FORM = { tag_number: '', animal_type: 'sapi', breed: '', gender: 'betina', status: 'sehat', weight_kg: '', birth_date: '', purchase_date: '', notes: '' }
 
 export default function Animals() {
   const { user } = useAuth()
@@ -15,9 +16,7 @@ export default function Animals() {
   const [filter, setFilter] = useState('Semua')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editId, setEditId] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [editingAnimal, setEditingAnimal] = useState(null)
 
   const isOwner = user?.role === 'owner'
 
@@ -31,34 +30,20 @@ export default function Animals() {
     setLoading(false)
   }
 
-  useEffect(() => { fetch() }, [filter, search])
+  useEffect(() => {
+  const timer = setTimeout(() => { fetch() }, 400)
+  return () => clearTimeout(timer)
+}, [filter, search])
 
-  const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
-
-  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setShowModal(true) }
-  const openEdit = (a) => {
-    setForm({ tag_number: a.tag_number, animal_type: a.animal_type, breed: a.breed||'', gender: a.gender||'betina', status: a.status, weight_kg: a.weight_kg||'', birth_date: a.birth_date||'', purchase_date: a.purchase_date||'', notes: a.notes||'' })
-    setEditId(a.id); setShowModal(true)
-  }
-
-  const save = async (e) => {
-    e.preventDefault(); setSaving(true)
-    try {
-      const payload = { ...form, weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null }
-      if (editId) await api.put(`/animals/${editId}`, payload)
-      else await api.post('/animals', payload)
-      setShowModal(false); fetch()
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal menyimpan')
-    } finally { setSaving(false) }
-  }
+  const openAdd = () => { setEditingAnimal(null); setShowModal(true) }
+  const openEdit = (a) => { setEditingAnimal(a); setShowModal(true) }
 
   const del = async (id) => {
     if (!confirm('Hapus hewan ini?')) return
     await api.delete(`/animals/${id}`); fetch()
   }
 
-  const counts = { total: animals.length, sehat: animals.filter(a=>a.status==='sehat').length, observasi: animals.filter(a=>a.status==='sakit').length, kritis: animals.filter(a=>a.status==='kritis').length }
+  const counts = { total: animals.length, sehat: animals.filter(a=>a.status==='sehat').length, sakit: animals.filter(a=>a.status==='sakit').length, kritis: animals.filter(a=>a.status==='kritis').length, mati: animals.filter(a=>a.status==='mati').length }
 
   return (
     <div className="space-y-6 fade-in">
@@ -75,7 +60,7 @@ export default function Animals() {
         {[
           { label: 'Total Ternak', val: counts.total, color: 'text-gray-800', bar: 'bg-barn' },
           { label: 'Sehat',        val: counts.sehat, color: 'text-green-600', bar: 'bg-green-500' },
-          { label: 'Observasi',    val: counts.observasi, color: 'text-yellow-600', bar: 'bg-yellow-400' },
+          { label: 'Sakit',        val: counts.sakit, color: 'text-yellow-600', bar: 'bg-yellow-400' },
           { label: 'Kritis',       val: counts.kritis, color: 'text-red-600', bar: 'bg-red-500' },
         ].map(s => (
           <div key={s.label} className="card">
@@ -144,46 +129,12 @@ export default function Animals() {
       )}
 
       {/* Modal */}
-      {showModal && (
-        <Modal title={editId ? 'Edit Data Hewan' : 'Tambah Hewan Baru'} onClose={() => setShowModal(false)}>
-          <form onSubmit={save} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Nomor Tag *</label><input required value={form.tag_number} onChange={set('tag_number')} className="input" placeholder="Contoh: BV-001" /></div>
-              <div><label className="label">Jenis Hewan *</label>
-                <select value={form.animal_type} onChange={set('animal_type')} className="input">
-                  {['sapi','kambing','domba','ayam'].map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Ras/Breed</label><input value={form.breed} onChange={set('breed')} className="input" placeholder="Contoh: Limousin" /></div>
-              <div><label className="label">Jenis Kelamin</label>
-                <select value={form.gender} onChange={set('gender')} className="input">
-                  <option value="betina">Betina</option>
-                  <option value="jantan">Jantan</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Berat (kg)</label><input type="number" step="0.01" value={form.weight_kg} onChange={set('weight_kg')} className="input" placeholder="0.00" /></div>
-              <div><label className="label">Status</label>
-                <select value={form.status} onChange={set('status')} className="input">
-                  {['sehat','sakit','kritis','mati'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Tanggal Lahir</label><input type="date" value={form.birth_date} onChange={set('birth_date')} className="input" /></div>
-              <div><label className="label">Tanggal Beli</label><input type="date" value={form.purchase_date} onChange={set('purchase_date')} className="input" /></div>
-            </div>
-            <div><label className="label">Catatan</label><textarea value={form.notes} onChange={set('notes')} rows={2} className="input resize-none" placeholder="Catatan tambahan..." /></div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1 justify-center">Batal</button>
-              <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Menyimpan...' : 'Simpan'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      <AnimalFormModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        animal={editingAnimal}
+        onSaved={fetch}
+      />
     </div>
   )
 }

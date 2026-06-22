@@ -10,10 +10,10 @@ import Productions from './pages/Productions'
 import FeedInventory from './pages/FeedInventory'
 import FeedingSchedules from './pages/FeedingSchedules'
 import HealthRecords from './pages/HealthRecords'
-import Laporan from './pages/Laporan'
-import Pengaturan from './pages/Pengaturan'
+import Reports from './pages/Reports'
+import Settings from './pages/Settings'
 import VaccineSchedule from './pages/VaccineSchedule'
-import Tim from './pages/Tim'
+import Team from './pages/Team'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -58,9 +58,9 @@ export default function App() {
           <Route path="jadwal"     element={<FeedingSchedules />} />
           <Route path="health-records" element={<HealthRecords />} />
           <Route path="vaksinasi"  element={<VaccineSchedule />} />
-          <Route path="laporan"    element={<Laporan />} />
-          <Route path="pengaturan" element={<Pengaturan />} />
-          <Route path="tim"        element={<OwnerRoute><Tim /></OwnerRoute>} />
+          <Route path="laporan"    element={<Reports />} />
+          <Route path="pengaturan" element={<Settings />} />
+          <Route path="tim"        element={<OwnerRoute><Team /></OwnerRoute>} />
         </Route>
       </Routes>
     </AuthProvider>

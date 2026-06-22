@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 
@@ -15,13 +16,20 @@ export default function FeedInventory() {
   const [form, setForm] = useState(EMPTY)
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 10
 
   const fetchAll = async () => {
     setLoading(true)
     const [f, l] = await Promise.all([api.get('/feed-inventory'), api.get('/feed-inventory/low-stock')])
     setFeeds(f.data); setLowStock(l.data); setLoading(false)
   }
+
   useEffect(() => { fetchAll() }, [])
+
+  const totalPages = Math.max(1, Math.ceil(feeds.length / PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = feeds.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
@@ -38,7 +46,7 @@ export default function FeedInventory() {
       if (editId) await api.put(`/feed-inventory/${editId}`, payload)
       else await api.post('/feed-inventory', payload)
       setShowModal(false); fetchAll()
-    } catch (err) { alert(err.response?.data?.detail || 'Gagal') }
+    } catch (err) { alert(getErrorMessage(err, 'Gagal menyimpan')) }
     finally { setSaving(false) }
   }
 
@@ -46,7 +54,9 @@ export default function FeedInventory() {
 
   const pct = (f) => Math.min(100, Math.round((f.current_stock_kg / Math.max(f.min_stock_alert * 3, 1)) * 100))
   const barColor = (f) => pct(f) <= 20 ? 'bg-red-500' : pct(f) <= 50 ? 'bg-yellow-400' : 'bg-green-500'
-
+  // Bandingkan sebagai ANGKA (nilai dari API bisa berupa string "80.00")
+  const isKritis = (f) => Number(f.current_stock_kg) <= Number(f.min_stock_alert)
+  
   return (
     <div className="space-y-6 fade-in">
       <div className="flex items-start justify-between">
@@ -98,19 +108,19 @@ export default function FeedInventory() {
               <tbody className="divide-y divide-gray-50">
                 {feeds.length === 0 ? (
                   <tr><td colSpan={8} className="py-8 text-center text-gray-400">Belum ada data pakan</td></tr>
-                ) : feeds.map(f => (
+                ) : pageItems.map(f => (
                   <tr key={f.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 pr-4 font-medium text-gray-800">{f.feed_name}</td>
                     <td className="py-3 pr-4">
-                      <span className={`font-semibold ${f.current_stock_kg <= f.min_stock_alert ? 'text-red-600' : 'text-gray-800'}`}>{f.current_stock_kg} kg</span>
+                      <span className={`font-semibold ${isKritis(f) ? 'text-red-600' : 'text-gray-800'}`}>{f.current_stock_kg} kg</span>
                       <div className="w-24 h-1.5 bg-gray-100 rounded-full mt-1">
                         <div className={`h-1.5 rounded-full ${barColor(f)}`} style={{ width: `${pct(f)}%` }} />
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-gray-500">{f.min_stock_alert} kg</td>
                     <td className="py-3 pr-4">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${f.current_stock_kg <= f.min_stock_alert ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                        {f.current_stock_kg <= f.min_stock_alert ? 'Kritis' : 'Aman'}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isKritis(f) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        {isKritis(f) ? 'Kritis' : 'Aman'}
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-gray-500">{f.unit_price ? `Rp ${Number(f.unit_price).toLocaleString('id')}` : '—'}</td>
@@ -126,6 +136,20 @@ export default function FeedInventory() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && feeds.length > 0 && (
+          <div className="flex items-center justify-between mt-4 text-sm">
+            <span className="text-gray-500">
+              Menampilkan {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, feeds.length)} dari {feeds.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">‹ Sebelumnya</button>
+              <span className="text-gray-600 font-medium">Hal. {currentPage} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">Berikutnya ›</button>
+            </div>
           </div>
         )}
       </div>

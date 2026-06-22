@@ -32,11 +32,10 @@ def list_health_records(
 def create_health_record(
     payload: schemas.HealthRecordCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),  # semua role boleh catat
+    current_user: models.User = Depends(get_current_user),  
 ):
     _verify_animal_access(payload.animal_id, current_user, db)
 
-    # handled_by otomatis diisi user yang login
     data = payload.model_dump()
     data["handled_by"] = current_user.id
 
@@ -61,7 +60,7 @@ def update_health_record(
     record_id: int,
     payload: schemas.HealthRecordUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),  # semua role boleh edit
+    current_user: models.User = Depends(get_current_user),  
 ):
     record = _get_or_404(record_id, current_user, db)
 
@@ -77,7 +76,7 @@ def update_health_record(
 def delete_health_record(
     record_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),  # hanya owner yang bisa hapus
+    current_user: models.User = Depends(require_owner),  
 ):
     record = _get_or_404(record_id, current_user, db)
     db.delete(record)

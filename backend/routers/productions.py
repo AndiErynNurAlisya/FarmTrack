@@ -11,9 +11,6 @@ import schemas
 
 router = APIRouter(prefix="/productions", tags=["Produksi"])
 
-
-# Pemetaan jenis hewan -> jenis produk yang sah beserta satuan standarnya.
-# Sumber kebenaran validasi produksi agar sesuai jenis hewan (selaras dgn frontend).
 ANIMAL_PRODUCTS = {
     "sapi":    {"susu": "liter", "daging": "kg"},
     "kambing": {"susu": "liter", "daging": "kg"},
@@ -29,7 +26,7 @@ def list_productions(
     date_from:    Optional[date] = Query(None),
     date_to:      Optional[date] = Query(None),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner_or_staff),  # veterinary tidak perlu lihat produksi
+    current_user: models.User = Depends(require_owner_or_staff),  
 ):
     user_ids = get_farm_user_ids(current_user, db)
     q = (
@@ -53,11 +50,10 @@ def list_productions(
 def create_production(
     payload: schemas.ProductionCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner_or_staff),  # staff bisa catat produksi harian
+    current_user: models.User = Depends(require_owner_or_staff),  
 ):
     animal = _verify_animal_access(payload.animal_id, current_user, db)
 
-    # Validasi: jenis produk harus sesuai dengan jenis hewan.
     allowed = ANIMAL_PRODUCTS.get(animal.animal_type, {})
     if payload.product_type not in allowed:
         pilihan = ", ".join(allowed.keys()) or "tidak ada"
@@ -126,7 +122,7 @@ def update_production(
 def delete_production(
     production_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),  # hanya owner yang bisa hapus
+    current_user: models.User = Depends(require_owner),  
 ):
     prod = _get_or_404(production_id, current_user, db)
     db.delete(prod)

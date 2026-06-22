@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import Modal from '../components/Modal'
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'staff' }
@@ -10,12 +11,14 @@ const roleColor = {
   veterinary: 'bg-purple-50 text-purple-600'
 }
 
-export default function Tim() {
+export default function Team() {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 10
 
   const fetchMembers = async () => {
     setLoading(true)
@@ -40,7 +43,7 @@ export default function Tim() {
       setForm(EMPTY_FORM)
       fetchMembers()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal menambahkan anggota')
+    alert(getErrorMessage(err, 'Gagal menambahkan anggota'))
     } finally {
       setSaving(false)
     }
@@ -52,12 +55,16 @@ export default function Tim() {
       await api.delete(`/auth/members/${id}`)
       fetchMembers()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Gagal menghapus anggota')
+    alert(getErrorMessage(err, 'Gagal menghapus anggota'))
     }
   }
 
   const staffCount = members.filter(m => m.role === 'staff').length
   const vetCount = members.filter(m => m.role === 'veterinary').length
+
+  const totalPages = Math.max(1, Math.ceil(members.length / PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = members.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   return (
     <div className="space-y-6 fade-in">
@@ -117,7 +124,7 @@ export default function Tim() {
               </tr>
             </thead>
             <tbody>
-              {members.map(m => (
+              {pageItems.map(m => (
                 <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -149,6 +156,20 @@ export default function Tim() {
             </tbody>
           </table>
         )}
+        {!loading && members.length > 0 && (
+        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 text-sm">
+          <span className="text-gray-500">
+            Menampilkan {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, members.length)} dari {members.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+              className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">‹ Sebelumnya</button>
+            <span className="text-gray-600 font-medium">Hal. {currentPage} / {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded-md border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">Berikutnya ›</button>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Modal Tambah */}

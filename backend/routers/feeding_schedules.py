@@ -37,7 +37,6 @@ def create_schedule(
 ):
     owner_id = current_user.id if current_user.role == "owner" else current_user.owner_id
 
-    # pastikan feed_id milik farm yang sama
     feed = db.query(models.FeedInventory).filter(
         models.FeedInventory.id == payload.feed_id,
         models.FeedInventory.user_id == owner_id
@@ -82,7 +81,7 @@ def update_schedule(
 def delete_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),  # hanya owner yang bisa hapus
+    current_user: models.User = Depends(require_owner),  
 ):
     schedule = _get_or_404(schedule_id, current_user, db)
     db.delete(schedule)

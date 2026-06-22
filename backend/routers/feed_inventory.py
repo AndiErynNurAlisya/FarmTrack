@@ -44,9 +44,6 @@ def create_feed(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_owner_or_staff),
 ):
-    # Stok pakan dimiliki di tingkat farm (owner), bukan per user.
-    # Staff boleh menambah, tetapi data tetap tercatat milik owner agar
-    # konsisten dengan unique constraint (user_id, feed_name) dan _get_or_404.
     owner_id = current_user.id if current_user.role == "owner" else current_user.owner_id
     feed = models.FeedInventory(**payload.model_dump(), user_id=owner_id)
     db.add(feed)
@@ -69,7 +66,7 @@ def update_feed(
     feed_id: int,
     payload: schemas.FeedInventoryUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner_or_staff),  # ubah ini
+    current_user: models.User = Depends(require_owner_or_staff),  
 ):
     feed = _get_or_404(feed_id, current_user, db)
 

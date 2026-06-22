@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../api/axios'
+import { getErrorMessage } from '../api/error'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import AnimalFormModal from '../components/AnimalFormModal'
 import StatusBadge from '../components/StatusBadge'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const HEALTH_EMPTY = { check_date: '', disease: '', symptoms: '', treatment: '', medicine_name: '', next_vaccine_date: '' }
-const ANIMAL_EMPTY = { tag_number: '', animal_type: 'sapi', breed: '', gender: 'betina', status: 'sehat', weight_kg: '', birth_date: '', purchase_date: '', notes: '' }
 
 export default function AnimalDetail() {
   const { id } = useParams()
@@ -20,7 +21,6 @@ export default function AnimalDetail() {
   const [showHealth, setShowHealth] = useState(false)
   const [healthForm, setHealthForm] = useState(HEALTH_EMPTY)
   const [showEdit, setShowEdit] = useState(false)
-  const [editForm, setEditForm] = useState(ANIMAL_EMPTY)
   const [saving, setSaving] = useState(false)
 
   const isOwner = user?.role === 'owner'
@@ -50,37 +50,10 @@ export default function AnimalDetail() {
   useEffect(() => { fetchAll() }, [id])
 
   const setHF = k => e => setHealthForm(p => ({ ...p, [k]: e.target.value }))
-  const setEF = k => e => setEditForm(p => ({ ...p, [k]: e.target.value }))
 
   const openEditProfile = () => {
     if (!animal) return
-    setEditForm({
-      tag_number: animal.tag_number || '',
-      animal_type: animal.animal_type || 'sapi',
-      breed: animal.breed || '',
-      gender: animal.gender || 'betina',
-      status: animal.status || 'sehat',
-      weight_kg: animal.weight_kg || '',
-      birth_date: animal.birth_date || '',
-      purchase_date: animal.purchase_date || '',
-      notes: animal.notes || '',
-    })
     setShowEdit(true)
-  }
-
-  const saveAnimal = async (e) => {
-    e.preventDefault(); setSaving(true)
-    try {
-      const payload = { ...editForm, weight_kg: editForm.weight_kg ? parseFloat(editForm.weight_kg) : null }
-      await api.put(`/animals/${id}`, payload)
-      setShowEdit(false); fetchAll()
-    } catch (err) {
-      const d = err.response?.data?.detail
-      const msg = Array.isArray(d)
-        ? d.map(x => x.msg).join(', ')
-        : (typeof d === 'string' ? d : 'Gagal menyimpan data hewan')
-      alert(msg)
-    } finally { setSaving(false) }
   }
 
   const saveHealth = async (e) => {
@@ -100,11 +73,7 @@ export default function AnimalDetail() {
     await api.post('/health-records', payload)
     setShowHealth(false); setHealthForm(HEALTH_EMPTY); fetchAll()
   } catch (err) {
-    const d = err.response?.data?.detail
-    const msg = Array.isArray(d)
-      ? d.map(x => x.msg).join(', ')
-      : (typeof d === 'string' ? d : 'Gagal menyimpan catatan')
-    alert(msg)
+    alert(getErrorMessage(err, 'Gagal menyimpan catatan'))
   }
   finally { setSaving(false) }
 }
@@ -124,8 +93,10 @@ export default function AnimalDetail() {
   const animalEmoji = { sapi: '🐄', kambing: '🐐', ayam: '🐔', domba: '🐑' }
 
   const statusColor = (s) => {
-    if (s === 'Completed') return 'bg-green-100 text-green-700'
-    if (s === 'Observation') return 'bg-yellow-100 text-yellow-700'
+    if (s === 'sehat') return 'bg-green-100 text-green-700'
+    if (s === 'sakit') return 'bg-yellow-100 text-yellow-700'
+    if (s === 'kritis') return 'bg-red-100 text-red-700'
+    if (s === 'mati') return 'bg-gray-200 text-gray-700'
     return 'bg-gray-100 text-gray-600'
   }
 
@@ -152,9 +123,9 @@ export default function AnimalDetail() {
       {/* Breadcrumb + Title */}
       <div>
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-          <Link to="/ternak" className="hover:text-barn transition-colors">Livestock</Link>
+          <Link to="/ternak" className="hover:text-barn transition-colors">Ternak</Link>
           <span>›</span>
-          <span className="text-gray-700 font-medium capitalize">{animal.animal_type} Profile</span>
+          <span className="text-gray-700 font-medium capitalize">{animal.animal_type} Profil</span>
         </div>
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800">
@@ -165,13 +136,13 @@ export default function AnimalDetail() {
               onClick={openEditProfile}
               className="flex items-center gap-1.5 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              ✏ Edit Profile
+              ✏ Edit Profil
             </button>
             <button
               onClick={() => setShowHealth(true)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-barn text-white rounded-lg hover:bg-barn/90 transition-colors font-medium"
             >
-              📋 Log Health Event
+              📋 Catatan Kesehatan & Aktivitas
             </button>
           </div>
         </div>
@@ -208,17 +179,6 @@ export default function AnimalDetail() {
                   <p className="text-sm font-semibold text-gray-800 capitalize mt-0.5">{v}</p>
                 </div>
               ))}
-            </div>
-
-            {/* Biological score */}
-            <div className="px-4 pb-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-gray-500">Biological Score</span>
-                <span className="text-xs font-bold text-gray-700">94/100</span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-barn h-2 rounded-full" style={{ width: '94%' }}/>
-              </div>
             </div>
 
             {/* Biological Identifiers */}
@@ -286,10 +246,6 @@ export default function AnimalDetail() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
               <h3 className="font-semibold text-gray-700">Health & Activity Log</h3>
-              <div className="flex gap-2">
-                <button className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg">⚙</button>
-                <button className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg">↓</button>
-              </div>
             </div>
 
             {health.length === 0 ? (
@@ -323,9 +279,6 @@ export default function AnimalDetail() {
                     ))}
                   </tbody>
                 </table>
-                <div className="px-5 py-3 text-center">
-                  <button className="text-sm text-barn hover:underline">View Full Chronological History</button>
-                </div>
               </>
             )}
           </div>
@@ -383,44 +336,10 @@ export default function AnimalDetail() {
           </form>
         </Modal>
       )}
-      {showEdit && (
-        <Modal title="Edit Data Hewan" onClose={() => setShowEdit(false)}>
-          <form onSubmit={saveAnimal} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Nomor Tag *</label><input required value={editForm.tag_number} onChange={setEF('tag_number')} className="input" placeholder="Contoh: BV-001" /></div>
-              <div><label className="label">Jenis Hewan *</label>
-                <select value={editForm.animal_type} onChange={setEF('animal_type')} className="input">
-                  {['sapi','kambing','domba','ayam'].map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Ras/Breed</label><input value={editForm.breed} onChange={setEF('breed')} className="input" placeholder="Contoh: Limousin" /></div>
-              <div><label className="label">Jenis Kelamin</label>
-                <select value={editForm.gender} onChange={setEF('gender')} className="input">
-                  <option value="betina">Betina</option>
-                  <option value="jantan">Jantan</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Berat (kg)</label><input type="number" step="0.01" value={editForm.weight_kg} onChange={setEF('weight_kg')} className="input" placeholder="0.00" /></div>
-              <div><label className="label">Status</label>
-                <select value={editForm.status} onChange={setEF('status')} className="input">
-                  {['sehat','sakit','kritis','mati'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Tanggal Lahir</label><input type="date" value={editForm.birth_date} onChange={setEF('birth_date')} className="input" /></div>
-              <div><label className="label">Tanggal Beli</label><input type="date" value={editForm.purchase_date} onChange={setEF('purchase_date')} className="input" /></div>
-            </div>
-            <div><label className="label">Catatan</label><textarea value={editForm.notes} onChange={setEF('notes')} rows={2} className="input resize-none" placeholder="Catatan tambahan..." /></div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowEdit(false)} className="btn-secondary flex-1 justify-center">Batal</button>
-              <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving ? 'Menyimpan...' : 'Simpan'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      <AnimalFormModal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        animal={animal}
+        onSaved={fetchAll}
+      />
       </div> )}

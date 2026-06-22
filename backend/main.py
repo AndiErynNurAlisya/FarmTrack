@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 import models
 
-# buat semua tabel saat startup
 models.Base.metadata.create_all(bind=engine)
 
 from routers import auth_router, animals, health_records, productions, feed_inventory, feeding_schedules, dashboard

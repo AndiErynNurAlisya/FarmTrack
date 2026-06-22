@@ -8,7 +8,7 @@ const allNavItems = [
   { path: '/vaksinasi',       label: 'Jadwal Vaksin',  icon: '💉', roles: ['owner', 'staff', 'veterinary'] },
   { path: '/produksi',        label: 'Produksi',     icon: '📊', roles: ['owner', 'staff'] },
   { path: '/stok-pakan',      label: 'Stok Pakan',     icon: '🌾', roles: ['owner'] },
-  { path: '/jadwal',          label: 'Jadwal Pakan',      icon: '📅', roles: ['owner'] },
+  { path: '/jadwal',          label: 'Jadwal Pakan',      icon: '📅', roles: ['owner', 'staff'] },
   { path: '/laporan',         label: 'Laporan',        icon: '📋', roles: ['owner', 'staff'] },
 ]
 
@@ -65,10 +65,6 @@ export default function Layout() {
               <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
             </div>
           </div>
-          <button onClick={handleLogout}
-            className="w-full text-left sidebar-item sidebar-item-inactive text-red-500 hover:bg-red-50">
-            <span>→</span><span>Keluar</span>
-          </button>
         </div>
       </aside>
 

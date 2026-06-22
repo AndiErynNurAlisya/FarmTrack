@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../api/axios'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-export default function Laporan() {
+export default function Reports() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -18,11 +18,79 @@ export default function Laporan() {
 
   const kpiCards = [
     { label: 'Indeks Kesehatan Rata-rata', val: `${data?.indeks_kesehatan || 0}/100`, icon: '❤️', color: 'text-barn' },
-    { label: 'Total Estimasi Pendapatan', val: rupiah(data?.total_pendapatan), icon: '💰', color: 'text-barn' },
-    { label: 'Estimasi Kebutuhan Pakan', val: `${data?.total_konsumsi_pakan_kg?.toFixed(0) || 0} Kg`, icon: '🌾', color: 'text-gray-800' },
+    { label: 'Total Pendapatan Tercatat', val: rupiah(data?.total_pendapatan), icon: '💰', color: 'text-barn' },
+    { label: 'Estimasi Kebutuhan Pakan Bulanan', val: `${data?.total_konsumsi_pakan_kg?.toFixed(0) || 0} Kg`, icon: '🌾', color: 'text-gray-800' },
   ]
+  // Susun baris laporan dari data yang sedang tampil
+  const buildRows = () => {
+    const d = data || {}
+    const rows = []
+    rows.push(['Laporan Performa FarmTrack'])
+    rows.push(['Dibuat', new Date().toLocaleString('id-ID')])
+    if (d.range) rows.push(['Periode', `${d.range.dari} – ${d.range.sampai}`])
+    rows.push([])
+    rows.push(['Ringkasan'])
+    rows.push(['Indeks Kesehatan Rata-rata', `${d.indeks_kesehatan || 0}/100`])
+    rows.push(['Estimasi Kebutuhan Pakan (Kg)', d.total_konsumsi_pakan_kg?.toFixed(0) || 0])
+    rows.push(['Total Pendapatan Tercatat (Rp)', d.total_pendapatan || 0])
+    if (perJenis.length) {
+      rows.push([])
+      rows.push(['Produksi & Estimasi Pendapatan per Jenis'])
+      rows.push(['Jenis', 'Jumlah', 'Satuan', 'Estimasi Pendapatan (Rp)'])
+      perJenis.forEach(p => rows.push([p.jenis, p.qty, p.unit, p.pendapatan || 0]))
+    }
+    if (pendapatanData.length) {
+      rows.push([])
+      rows.push(['Tren Estimasi Pendapatan'])
+      rows.push(['Tanggal', 'Estimasi Pendapatan (Rp)'])
+      data.tren_pendapatan.forEach(t => rows.push([t.tanggal, t.total]))
+    }
+    return rows
+  }
 
-  return (
+  const handleExportCSV = () => {
+    const rows = buildRows()
+    const esc = (v) => {
+      const s = String(v ?? '')
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const csv = '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `laporan-performa-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportPDF = () => {
+    const rows = buildRows()
+    const safe = (v) => String(v ?? '').replace(/</g, '&lt;')
+    const body = rows.map(r =>
+      r.length === 0
+        ? '<tr><td class="sp" colspan="4"></td></tr>'
+        : r.length === 1
+          ? `<tr><td class="hd" colspan="4">${safe(r[0])}</td></tr>`
+          : `<tr>${r.map(c => `<td>${safe(c)}</td>`).join('')}</tr>`
+    ).join('')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Laporan Performa</title>` +
+      `<style>body{font-family:Arial,Helvetica,sans-serif;color:#333;padding:24px}` +
+      `h1{font-size:18px;margin:0 0 12px}table{border-collapse:collapse;width:100%;font-size:12px}` +
+      `td{border:1px solid #ddd;padding:6px 8px}` +
+      `td.hd{background:#8B2635;color:#fff;font-weight:bold;border-color:#8B2635}` +
+      `td.sp{border:none;height:8px}</style></head>` +
+      `<body><h1>🐄 Laporan Performa FarmTrack</h1><table>${body}</table>` +
+      `<script>window.onload=function(){window.print()}<\/script></body></html>`
+    const w = window.open('', '_blank')
+    if (!w) { alert('Mohon izinkan pop-up agar PDF bisa diunduh.'); return }
+    w.document.write(html)
+    w.document.close()
+  }
+
+return (
     <div className="space-y-6 fade-in">
       <div className="flex items-start justify-between">
         <div>
@@ -107,18 +175,18 @@ export default function Laporan() {
           </div>
 
           {/* Export */}
+          {/* Export */}
           <div className="card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-gray-700">Data Ekspor Laporan</h3>
                 <p className="text-xs text-gray-400 mt-0.5">Unduh riwayat data untuk keperluan arsip atau audit</p>
               </div>
               <div className="flex gap-2">
-                <button className="btn-primary text-sm">⬇ Ekspor PDF</button>
-                <button className="btn-secondary text-sm">⬇ Ekspor CSV</button>
+                <button onClick={handleExportPDF} disabled={!data} className="btn-primary text-sm disabled:opacity-50">⬇ Ekspor PDF</button>
+                <button onClick={handleExportCSV} disabled={!data} className="btn-secondary text-sm disabled:opacity-50">⬇ Ekspor CSV</button>
               </div>
             </div>
-            <p className="text-sm text-gray-400 text-center py-4">Fitur ekspor akan tersedia di versi berikutnya</p>
           </div>
         </>
       )}

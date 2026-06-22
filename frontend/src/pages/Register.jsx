@@ -41,11 +41,11 @@ export default function Register() {
             </div>
             <div>
               <label className="label">Password</label>
-              <input type="password" placeholder="Minimal 8 karakter" required value={form.password} onChange={set('password')} className="input" />
+              <input type="password" placeholder="Minimal 8 karakter" required minLength={8} value={form.password} onChange={set('password')} className="input" />
             </div>
             <div>
               <label className="label">Nama Peternakan</label>
-              <input type="text" placeholder="Contoh: Peternakan Maju Jaya" value={form.farm_name} onChange={set('farm_name')} className="input" />
+              <input type="text" placeholder="Contoh: Peternakan Maju Jaya" required value={form.farm_name} onChange={set('farm_name')} className="input" />
             </div>
             <p className="text-xs text-gray-400">
               Akun yang didaftarkan di sini adalah akun <span className="font-semibold text-gray-500">Owner</span> peternakan. Anggota tim (staff &amp; dokter hewan) ditambahkan oleh owner melalui menu Tim.

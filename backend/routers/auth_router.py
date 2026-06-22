@@ -12,6 +12,9 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 # ── Register Owner (publik) ────────────────────────────────────
 @router.post("/register", response_model=schemas.UserOut, status_code=201)
 def register_owner(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
+    if not payload.farm_name or not payload.farm_name.strip():
+        raise HTTPException(status_code=400, detail="Nama peternakan wajib diisi")
+
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email sudah terdaftar")
@@ -20,7 +23,7 @@ def register_owner(payload: schemas.RegisterRequest, db: Session = Depends(get_d
         name          = payload.name,
         email         = payload.email,
         password_hash = hash_password(payload.password),
-        role          = "owner",    # selalu owner, tidak bisa dimanipulasi
+        role          = "owner",    
         farm_name     = payload.farm_name,
         owner_id      = None,
     )
@@ -35,7 +38,7 @@ def register_owner(payload: schemas.RegisterRequest, db: Session = Depends(get_d
 def register_member(
     payload: schemas.RegisterRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_owner),  # wajib login sebagai owner
+    current_user: models.User = Depends(require_owner),  
 ):
     # validasi role yang boleh didaftarkan
     if payload.role not in ["staff", "veterinary"]:
@@ -52,9 +55,9 @@ def register_member(
         name          = payload.name,
         email         = payload.email,
         password_hash = hash_password(payload.password),
-        role          = payload.role,           # staff atau veterinary
-        farm_name     = None,                   # ikut farm owner
-        owner_id      = current_user.id,        # otomatis terhubung ke owner
+        role          = payload.role,           
+        farm_name     = None,                   
+        owner_id      = current_user.id,        
     )
     db.add(user)
     db.commit()
@@ -83,7 +86,7 @@ def delete_member(
 ):
     member = db.query(models.User).filter(
         models.User.id == member_id,
-        models.User.owner_id == current_user.id  # pastikan member milik owner ini
+        models.User.owner_id == current_user.id  
     ).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member tidak ditemukan")
@@ -120,10 +123,71 @@ def update_me(
     if "name" in data and data["name"] is not None:
         current_user.name = data["name"]
 
-    # Hanya owner yang punya farm_name; member ikut farm owner.
     if "farm_name" in data and current_user.role == "owner":
         current_user.farm_name = data["farm_name"]
 
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+# ── Ubah kata sandi sendiri ──────────────────────────
+@router.put("/me/password", status_code=204)
+def change_my_password(
+    payload: schemas.PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Kata sandi saat ini salah")
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Kata sandi baru minimal 8 karakter")
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+
+
+# ── Hapus akun sendiri ─────────────────────────────
+@router.delete("/me", status_code=204)
+def delete_my_account(
+    payload: schemas.AccountDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Kata sandi salah")
+
+    if current_user.role == "owner":
+        member_ids = [
+            u.id for u in db.query(models.User)
+            .filter(models.User.owner_id == current_user.id).all()
+        ]
+        farm_user_ids = [current_user.id] + member_ids
+
+        db.query(models.HealthRecord).filter(
+            models.HealthRecord.handled_by.in_(farm_user_ids)
+        ).update({models.HealthRecord.handled_by: None}, synchronize_session=False)
+
+        for animal in db.query(models.Animal).filter(
+            models.Animal.user_id.in_(farm_user_ids)
+        ).all():
+            db.delete(animal)
+
+        for feed in db.query(models.FeedInventory).filter(
+            models.FeedInventory.user_id.in_(farm_user_ids)
+        ).all():
+            db.delete(feed)
+
+        for member in db.query(models.User).filter(
+            models.User.owner_id == current_user.id
+        ).all():
+            db.delete(member)
+
+        db.flush()
+        db.delete(current_user)
+        db.commit()
+    else:
+        db.query(models.HealthRecord).filter(
+            models.HealthRecord.handled_by == current_user.id
+        ).update({models.HealthRecord.handled_by: None}, synchronize_session=False)
+        db.delete(current_user)
+        db.commit()
