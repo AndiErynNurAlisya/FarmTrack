@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
@@ -8,6 +11,17 @@ import models
 import schemas
 
 router = APIRouter(prefix="/animals", tags=["Ternak"])
+
+# Folder penyimpanan foto hewan yang diupload (backend/uploads/animals)
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "animals")
+# Tipe gambar yang diizinkan beserta ekstensi filenya
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 @router.get("", response_model=List[schemas.AnimalOut])
@@ -49,6 +63,31 @@ def create_animal(
     db.commit()
     db.refresh(animal)
     return animal
+
+@router.post("/upload-photo")
+async def upload_photo(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(require_owner),
+):
+    """Upload foto hewan. Mengembalikan URL yang bisa disimpan di kolom photo_url."""
+    ext = ALLOWED_IMAGE_TYPES.get(file.content_type)
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail="Format gambar tidak didukung (gunakan JPG, PNG, WEBP, atau GIF)",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="Ukuran file maksimal 5 MB")
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    with open(os.path.join(UPLOAD_DIR, filename), "wb") as f:
+        f.write(contents)
+
+    # URL relatif; lewat proxy Vite (/api -> backend) gambar bisa diakses langsung
+    return {"photo_url": f"/api/uploads/animals/{filename}"}
 
 
 @router.get("/{animal_id}", response_model=schemas.AnimalOut)

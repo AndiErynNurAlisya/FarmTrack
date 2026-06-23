@@ -8,6 +8,20 @@ import StatusBadge from '../components/StatusBadge'
 
 const TYPES = ['Semua', 'sapi', 'kambing', 'domba', 'ayam']
 //const EMPTY_FORM = { tag_number: '', animal_type: 'sapi', breed: '', gender: 'betina', status: 'sehat', weight_kg: '', birth_date: '', purchase_date: '', notes: '' }
+const ANIMAL_EMOJI = { sapi: '🐄', kambing: '🐐', ayam: '🐔', domba: '🐑' }
+
+// Thumbnail foto hewan dengan fallback ke emoji bila foto kosong/gagal dimuat.
+function AnimalThumb({ animal }) {
+  const [err, setErr] = useState(false)
+  const showImg = animal.photo_url && !err
+  return (
+    <div className="mb-3 w-full h-32 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center overflow-hidden">
+      {showImg
+        ? <img src={animal.photo_url} alt={`Foto ${animal.breed || animal.animal_type}`} onError={() => setErr(true)} className="w-full h-full object-cover" />
+        : <span className="text-5xl">{ANIMAL_EMOJI[animal.animal_type] || '🐄'}</span>}
+    </div>
+  )
+}
 
 export default function Animals() {
   const { user } = useAuth()
@@ -108,6 +122,10 @@ export default function Animals() {
                 <span className="text-xs font-semibold text-gray-400 uppercase">ID: {a.tag_number}</span>
                 <StatusBadge status={a.status} />
               </div>
+
+              <AnimalThumb animal={a} />
+
+              
               <div className="mb-3">
                 <p className="font-bold text-gray-800 capitalize">{a.breed || a.animal_type}</p>
                 <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full capitalize">{a.animal_type}</span>

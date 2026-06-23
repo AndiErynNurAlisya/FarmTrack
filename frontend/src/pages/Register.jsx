@@ -25,11 +25,11 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-cream">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-bold text-barn">FarmTrack</h1>
-          <p className="text-gray-500 text-sm mt-1">Buat akun baru untuk mulai mengelola peternakan Anda</p>
+          <h1 className="font-jolly text-6xl font-bold text-barn">FarmTrack</h1>
+          <p className="text-gray-500 text-sm mt-1 font-display">Buat akun baru untuk mulai mengelola peternakan Anda</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          {error && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
+          {error && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-display">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Nama Lengkap</label>
@@ -51,11 +51,11 @@ export default function Register() {
               Akun yang didaftarkan di sini adalah akun <span className="font-semibold text-gray-500">Owner</span> peternakan. Anggota tim (staff &amp; dokter hewan) ditambahkan oleh owner melalui menu Tim.
             </p>
             <button type="submit" disabled={loading}
-              className="w-full py-2.5 rounded-xl font-semibold text-white bg-barn hover:bg-primary-600 transition-colors">
+              className="w-full py-2.5 rounded-xl font-semibold text-white bg-barn hover:bg-primary-600 transition-colors font-display">
               {loading ? 'Mendaftar...' : 'Daftar Sekarang'}
             </button>
           </form>
-          <p className="text-center text-sm text-gray-500 mt-4">
+          <p className="text-center text-sm text-gray-500 mt-4 font-display">
             Sudah punya akun? <Link to="/login" className="text-barn font-semibold">Login di sini</Link>
           </p>
         </div>

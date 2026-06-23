@@ -53,6 +53,7 @@ class Animal(Base):
     gender        = Column(String(10))                   
     status        = Column(String(10), nullable=False, default="sehat")  
     purchase_date = Column(Date)
+    photo_url     = Column(String(500))  
     notes         = Column(Text)
     created_at    = Column(DateTime, server_default=func.now())
 

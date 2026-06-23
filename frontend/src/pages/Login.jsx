@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+// SELURUH desain (Farm Track + kartu + panel merah + sapi + lingkaran) jadi 1 gambar.
+// Yang dikode hanya: kolom input, tombol Login, dan link Register Here.
+import BG from '../assets/bg-login.png'
 
 export default function Login() {
   const { login } = useAuth()
@@ -22,56 +25,45 @@ export default function Login() {
     }
   }
 
-  return (
-    <div className="min-h-screen flex" style={{ background: '#8B2635' }}>
-      {/* Left - Form */}
-      <div className="flex-1 flex items-center justify-center bg-white relative" style={{
-        clipPath: 'ellipse(85% 100% at 0% 50%)'
-      }}>
-        <div className="absolute top-8 left-8">
-          <div className="w-20 h-20 rounded-full opacity-20" style={{ background: '#8B2635' }} />
-        </div>
-        <div className="w-full max-w-sm mx-auto px-12">
-          <div className="bg-gray-100 rounded-3xl p-8 shadow-sm">
-            <h1 className="font-display text-3xl font-bold text-barn mb-6">Farm Track</h1>
-            {error && (
-              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-                {error}
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="email" placeholder="Username / Email" required
-                value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="input bg-white" />
-              <input
-                type="password" placeholder="Password" required
-                value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                className="input bg-white" />
-              <button type="submit" disabled={loading}
-                className="w-full py-3 rounded-full font-semibold text-white transition-all"
-                style={{ background: '#8B2635' }}>
-                {loading ? 'Memproses...' : 'Login'}
-              </button>
-            </form>
-            <p className="text-center text-sm text-gray-500 mt-4">
-              Belum punya akun?{' '}
-              <Link to="/register" className="font-semibold" style={{ color: '#8B2635' }}>Daftar di sini</Link>
-            </p>
-          </div>
-        </div>
-      </div>
+  // Kolom input: latar #D0D0D0, sudut membulat penuh (menyatu dengan kartu di gambar).
+  const fieldClass =
+    'w-full px-5 py-3 rounded-full bg-[#D0D0D0] text-sm text-gray-700 placeholder-gray-500 ' +
+    'focus:outline-none focus:ring-2 focus:ring-barn/40 transition-all'
 
-      {/* Right - Decorative */}
-      <div className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white">
-            <h2 className="font-display text-3xl font-bold mb-2">FarmTrack</h2>
-            <p className="text-white/70 text-sm">Manajemen Kandang Ternak Digital</p>
-          </div>
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center overflow-hidden">
+      {/* STAGE: desain dibuat penuh lebar layar. Beri max-w jika ingin dibatasi. */}
+      <div className="relative w-full">
+        {/* Gambar desain tampil pada ukuran natural (tidak ke-zoom seperti object-cover) */}
+        <img src={BG} alt="" className="w-full h-auto block select-none pointer-events-none" />
+
+        {/* Overlay disamakan dengan LEBAR KARTU (left + w), lalu px sama besar agar
+            input center & seimbang kiri-kanan terhadap kartu. */}
+        <div className="absolute left-[1%] top-[41%] w-[46%] px-[6%] flex flex-col">
+          {error && (
+            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <input type="email" placeholder="Username / Email" required
+              value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              className={fieldClass} />
+            <input type="password" placeholder="Password" required
+              value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+              className={fieldClass} />
+            <button type="submit" disabled={loading}
+              className="block mx-auto px-12 py-2.5 rounded-full font-semibold text-white bg-barn hover:bg-primary-600 shadow-lg shadow-black/40 hover:shadow-m hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-60 disabled:shadow-none">
+              {loading ? 'Memproses...' : 'Login'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-white mt-6 [-webkit-text-stroke:0.5px_#ffffff] [text-shadow:_1px_1px_3px_#000000]">
+            Belum memiliki akun?{' '}
+            <Link to="/register" className="font-bold text-barn [-webkit-text-stroke:0.5px_#8B2635] [text-shadow:_1px_1px_3px_#000000]">Register Here.</Link>
+          </p>
         </div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full opacity-10 bg-white" />
-        <div className="absolute top-10 right-20 w-20 h-20 rounded-full opacity-10 bg-white" />
       </div>
     </div>
   )

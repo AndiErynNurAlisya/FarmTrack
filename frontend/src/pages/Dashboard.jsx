@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 import { PRODUCT_LABELS, PRODUCT_UNITS } from '../constants/products'
+import iconHewan from '../assets/hewan.svg'
+import iconProduksi from '../assets/produksi.svg'
+import iconWarning from '../assets/warning.svg'
+import iconAman from '../assets/aman.svg'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -79,10 +83,11 @@ export default function Dashboard() {
       {/* Stats Row */}
       <div className={`grid gap-4 ${isVet ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {/* Card 1 - Total Hewan */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        {/* Card 1 - Total Hewan */}
+        <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-barn p-5 shadow-sm">
           <div className="flex items-start justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
-              <span className="text-xl">🐾</span>
+              <img src={iconHewan} alt="" className="w-6 h-6 object-contain" />
             </div>
           </div>
           <p className="text-sm text-gray-500">Total Hewan Ternak</p>
@@ -116,7 +121,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                <span className="text-xl">📊</span>
+                <img src={iconProduksi} alt="" className="w-6 h-6 object-contain" />
               </div>
             </div>
             <p className="text-sm text-gray-500">Produksi Hari Ini</p>
@@ -174,7 +179,7 @@ export default function Dashboard() {
             <div className="bg-barn rounded-2xl p-5 text-white shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                  <span className="text-xl">⚠️</span>
+                  <img src={iconWarning} alt="" className="w-6 h-6 object-contain" />
                 </div>
                 <Link to="/stok-pakan"
                   className="text-xs font-semibold border border-white/40 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
@@ -195,13 +200,13 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-                <span className="text-xl">✅</span>
+            <div className="bg-barn rounded-2xl p-5 text-white shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+                <img src={iconAman} alt="" className="w-6 h-6 object-contain" />
               </div>
-              <p className="text-sm text-gray-500">Stok Pakan</p>
-              <p className="text-xl font-bold text-green-600 mt-1">Semua Aman</p>
-              <p className="text-xs text-gray-400 mt-1">Stok pakan di atas batas minimum.</p>
+              <p className="text-white/70 text-sm">Stok Pakan</p>
+              <p className="text-xl font-bold mt-1">Semua Aman</p>
+              <p className="text-white/70 text-xs mt-1">Stok pakan di atas batas minimum.</p>
             </div>
           )
         )}

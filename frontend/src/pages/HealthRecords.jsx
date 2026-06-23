@@ -50,7 +50,7 @@ export default function HealthRecords() {
 
       <div className="bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg px-4 py-3 flex items-start gap-2">
         <span>ℹ️</span>
-        <span>Pencatatan hasil pemeriksaan kini dilakukan langsung dari halaman masing-masing hewan. Buka <Link to="/ternak" className="font-medium underline">Data Hewan</Link>, pilih hewan, lalu klik <b>Log Health Event</b>.</span>
+        <span>Pencatatan hasil pemeriksaan kini dilakukan langsung dari halaman masing-masing hewan. Buka <Link to="/ternak" className="font-medium underline">Data Hewan</Link>, pilih hewan, lalu klik <b>Catatan Kesehatan</b>.</span>
       </div>
 
       {/* Summary */}

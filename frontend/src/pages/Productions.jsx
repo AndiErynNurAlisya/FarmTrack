@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { PRODUCT_CONFIG, PRODUCT_LABELS, PRODUCT_UNITS, PRODUCT_ICONS, PRODUCT_TYPES } from '../constants/products'
+import noteIcon from '../assets/catatan.svg'
+import hewanIcon from '../assets/paw.svg'
 
 const EMPTY = { animal_id: '', production_date: '', product_type: '', quantity: '', unit: '', selling_price: '', notes: '' }
 
@@ -107,11 +109,15 @@ export default function Productions() {
               val: `${todaySummary[t] || 0} ${PRODUCT_UNITS[t]}`,
               icon: PRODUCT_ICONS[t],
             })),
-          { label: 'Total Catatan', val: prods.length, icon: '📝' },
-          { label: 'Hewan Berproduksi', val: new Set(prods.map(p=>p.animal_id)).size, icon: '🐄' },
+          { label: 'Total Catatan', val: prods.length, icon: noteIcon },
+          { label: 'Hewan Berproduksi', val: new Set(prods.map(p=>p.animal_id)).size, icon: hewanIcon },
         ].map(s => (
           <div key={s.label} className="card">
-            <div className="text-2xl mb-2">{s.icon}</div>
+              <div className="mb-2 h-7 flex items-center">
+                {typeof s.icon === 'string' && s.icon.includes('.svg')
+                  ? <img src={s.icon} alt="" className="w-7 h-7" />
+                  : <span className="text-2xl">{s.icon}</span>}
+              </div>
             <p className="text-xs text-gray-500">{s.label}</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{s.val}</p>
           </div>
@@ -138,7 +144,7 @@ export default function Productions() {
           {['susu', 'telur', 'daging', 'wol'].map(type => (
             <div key={type} className="card">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg">{PRODUCT_ICONS[type]}</span>
+                <img src={PRODUCT_ICONS[type]} alt="" className="w-5 h-5" />
                 <h3 className="font-semibold text-gray-700">Tren {PRODUCT_LABELS[type]} ({chartDays} Hari)</h3>
                 <span className="text-xs text-gray-400">({PRODUCT_UNITS[type]})</span>
               </div>

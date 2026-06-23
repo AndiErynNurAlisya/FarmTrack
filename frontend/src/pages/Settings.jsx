@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 import Modal from '../components/Modal'
+import iconPerson from '../assets/person.svg'
+import iconKeamanan from '../assets/keamanan.svg'
 
 export default function Settings() {
   const { user, logout } = useAuth()
@@ -57,8 +59,8 @@ export default function Settings() {
   }
 
   const tabs = [
-    { id: 'profil', label: 'Profil Peternak', icon: '👤' },
-    { id: 'keamanan', label: 'Keamanan', icon: '🔒' },
+    { id: 'profil', label: 'Profil Peternak', icon: iconPerson },
+    { id: 'keamanan', label: 'Keamanan', icon: iconKeamanan },
   ]
 
   return (
@@ -75,7 +77,8 @@ export default function Settings() {
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all ${tab === t.id ? 'bg-barn text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <span>{t.icon}</span><span>{t.label}</span>
+                <img src={t.icon} alt="" className={`w-5 h-5 object-contain ${tab === t.id ? 'brightness-0 invert' : ''}`} />
+                <span>{t.label}</span>
               </button>
             ))}
             <hr className="my-2 border-gray-100" />

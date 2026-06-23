@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { PRODUCT_ICONS } from '../constants/products'
 
 export default function Reports() {
   const [data, setData] = useState(null)
@@ -11,7 +12,6 @@ export default function Reports() {
     api.get('/dashboard/laporan').then(r => setData(r.data)).finally(() => setLoading(false))
   }, [])
 
-  const ICONS = { susu: '💧', telur: '🥚', daging: '🥩', wol: '🧶' }
   const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID')
   const pendapatanData = data?.tren_pendapatan?.map(d => ({ tanggal: d.tanggal.slice(5), total: d.total })) || []
   const perJenis = data?.produksi_per_jenis || []
@@ -156,7 +156,9 @@ return (
                   {perJenis.map(p => (
                     <div key={p.jenis} className="flex items-center justify-between py-2 border-b border-gray-50">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{ICONS[p.jenis] || '📦'}</span>
+                        {PRODUCT_ICONS[p.jenis]
+                          ? <img src={PRODUCT_ICONS[p.jenis]} alt="" className="w-6 h-6" />
+                          : <span className="text-lg">📦</span>}
                         <div>
                           <p className="text-sm font-semibold text-gray-800 capitalize">{p.jenis}</p>
                           <p className="text-xs text-gray-400">{p.qty} {p.unit}</p>

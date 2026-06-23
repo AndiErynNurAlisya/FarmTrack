@@ -26,6 +26,11 @@ DAYS = 30
 # pastikan tabel ada
 models.Base.metadata.create_all(bind=engine)
 
+# pastikan kolom photo_url ada (idempoten) untuk DB lama tanpa kolom ini
+from sqlalchemy import text as _sql_text
+with engine.begin() as _conn:
+    _conn.execute(_sql_text("ALTER TABLE animals ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500)"))
+
 TODAY = date.today()
 
 OWNER_EMAIL = "demo@farmtrack.com"
@@ -119,6 +124,16 @@ def main():
             ("DMB-001",  "domba",   "Merino",            "betina", "sehat", 500, 62.0),
             ("DMB-002",  "domba",   "Garut",             "jantan", "sakit", 430, 58.0),
         ]
+
+        # Foto contoh per jenis hewan (cukup pakai URL gambar publik).
+        # Bisa diganti URL lain, atau lewat fitur upload di aplikasi.
+        PHOTOS = {
+            "sapi":    "https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&w=800&q=80",
+            "kambing": "https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&w=800&q=80",
+            "ayam":    "https://images.unsplash.com/photo-1612170153139-6f881ff067e0?auto=format&fit=crop&w=800&q=80",
+            "domba":   "https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&w=800&q=80",
+        }
+
         animals = {}
         for tag, jenis, ras, gender, status, umur, berat in animals_def:
             a = models.Animal(
@@ -131,6 +146,7 @@ def main():
                 gender=gender,
                 status=status,
                 purchase_date=TODAY - timedelta(days=max(umur - 60, 10)),
+                photo_url=PHOTOS.get(jenis), 
                 notes=f"Data dummy {jenis} - {ras}",
             )
             db.add(a)

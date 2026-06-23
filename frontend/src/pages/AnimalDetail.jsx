@@ -22,6 +22,7 @@ export default function AnimalDetail() {
   const [healthForm, setHealthForm] = useState(HEALTH_EMPTY)
   const [showEdit, setShowEdit] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   const isOwner = user?.role === 'owner'
 
@@ -31,6 +32,7 @@ export default function AnimalDetail() {
     // Data hewan adalah yang utama.
     const a = await api.get(`/animals/${id}`)
     setAnimal(a.data)
+    setImgError(false)
 
     // Kesehatan & produksi bersifat best-effort: sebagian role (mis. veterinary)
     // tidak punya akses ke produksi, jadi kegagalannya tidak boleh memblokir halaman.
@@ -123,7 +125,7 @@ export default function AnimalDetail() {
       {/* Breadcrumb + Title */}
       <div>
         <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-          <Link to="/ternak" className="hover:text-barn transition-colors">Ternak</Link>
+          <Link to="/ternak" className="hover:text-barn transition-colors">Data Hewan</Link>
           <span>›</span>
           <span className="text-gray-700 font-medium capitalize">{animal.animal_type} Profil</span>
         </div>
@@ -142,7 +144,7 @@ export default function AnimalDetail() {
               onClick={() => setShowHealth(true)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-barn text-white rounded-lg hover:bg-barn/90 transition-colors font-medium"
             >
-              📋 Catatan Kesehatan & Aktivitas
+              Catatan Kesehatan & Aktivitas
             </button>
           </div>
         </div>
@@ -155,23 +157,29 @@ export default function AnimalDetail() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
             {/* Animal image area */}
             <div className="relative">
-              <div className="w-full h-48 bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
-                <span className="text-8xl">{animalEmoji[animal.animal_type] || '🐄'}</span>
+              <div className="w-full h-48 bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center overflow-hidden">
+                {animal.photo_url && !imgError ? (
+                  <img
+                    src={animal.photo_url}
+                    alt={`Foto ${animal.breed || animal.animal_type} ${animal.tag_number}`}
+                    onError={() => setImgError(true)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-8xl">{animalEmoji[animal.animal_type] || '🐄'}</span>
+                )}
               </div>
-              <div className="absolute top-3 right-3">
-                <span className="flex items-center gap-1 bg-white text-green-600 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"/>
-                  {animal.status === 'sehat' ? 'Healthy' : animal.status}
-                </span>
+              <div className="absolute top-3 right-3 rounded-full shadow-sm">
+                <StatusBadge status={animal.status} />
               </div>
             </div>
 
             {/* Info grid */}
             <div className="p-4 grid grid-cols-2 gap-3">
               {[
-                ['BREED', animal.breed || '—'],
-                ['AGE', calcAge(animal.birth_date)],
-                ['GENDER', animal.gender || '—'],
+                ['JENIS', animal.breed || '—'],
+                ['UMUR', calcAge(animal.birth_date)],
+                ['JENIS KELAMIN', animal.gender || '—'],
                 ['STATUS', animal.status],
               ].map(([k, v]) => (
                 <div key={k}>
@@ -183,7 +191,7 @@ export default function AnimalDetail() {
 
             {/* Biological Identifiers */}
             <div className="px-4 pb-4 border-t border-gray-50 pt-3">
-              <p className="text-xs font-semibold text-gray-500 mb-2">Biological Identifiers</p>
+              <p className="text-xs font-semibold text-gray-500 mb-2">PENGIDENTIFIKASI BIOLOGIS</p>
               <div className="space-y-1.5">
                 {[
                   ['RFID Tag', animal.tag_number],
@@ -208,7 +216,7 @@ export default function AnimalDetail() {
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">💧</span>
-              <span className="text-xs text-gray-500">Daily Yield</span>
+              <span className="text-xs text-gray-500">Produksi Harian</span>
             </div>
             <p className="text-xl font-bold text-gray-800">{prodHarian}</p>
             {yieldDiff != null ? (
@@ -224,7 +232,7 @@ export default function AnimalDetail() {
           <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">⚖</span>
-              <span className="text-xs text-gray-500">Current Weight</span>
+              <span className="text-xs text-gray-500">Berat Hewan</span>
             </div>
             <p className="text-xl font-bold text-gray-800">{animal.weight_kg ? `${animal.weight_kg} kg` : '—'}</p>
           </div>
@@ -245,7 +253,7 @@ export default function AnimalDetail() {
           {/* Health & Activity Log */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-              <h3 className="font-semibold text-gray-700">Health & Activity Log</h3>
+              <h3 className="font-semibold text-gray-700">Log Kesehatan & Aktivitas</h3>
             </div>
 
             {health.length === 0 ? (
@@ -288,11 +296,7 @@ export default function AnimalDetail() {
             {/* Chart */}
             <div className="col-span-3 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-700">Milk Production Trends (30 Days)</h3>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-barn inline-block"/>Current</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block"/>Breed Avg</span>
-                </div>
+                <h3 className="font-semibold text-gray-700">Hasil Produksi (30 Hari)</h3>
               </div>
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={160}>

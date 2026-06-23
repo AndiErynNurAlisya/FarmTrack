@@ -21,7 +21,8 @@ export default {
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'sans-serif'],
-        display: ['Playfair Display', 'serif'],
+        display: ['Poppins', 'sans-serif'],
+        jolly: ['Jolly Lodger', 'cursive'],
       },
     },
   },

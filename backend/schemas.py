@@ -65,6 +65,7 @@ class AnimalCreate(BaseModel):
     gender:        Optional[Literal["jantan", "betina"]] = None
     status:        Optional[Literal["sehat", "sakit", "kritis", "mati"]] = "sehat"
     purchase_date: Optional[date] = None
+    photo_url:     Optional[str] = None 
     notes:         Optional[str] = None
 
 class AnimalUpdate(BaseModel):
@@ -76,6 +77,7 @@ class AnimalUpdate(BaseModel):
     gender:        Optional[Literal["jantan", "betina"]] = None
     status:        Optional[Literal["sehat", "sakit", "kritis", "mati"]] = None
     purchase_date: Optional[date] = None
+    photo_url:     Optional[str] = None 
     notes:         Optional[str] = None
 
 class AnimalOut(BaseModel):
@@ -89,6 +91,7 @@ class AnimalOut(BaseModel):
     gender:        Optional[str]
     status:        str
     purchase_date: Optional[date]
+    photo_url:     Optional[str] = None 
     notes:         Optional[str]
     created_at:    Optional[datetime]
 
